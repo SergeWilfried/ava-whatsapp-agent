@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     TOTAL_MESSAGES_AFTER_SUMMARY: int = 5
 
     SHORT_TERM_MEMORY_DB_PATH: str = "/app/data/memory.db"
-    LANGUAGE: str = "en"  # Language code (e.g., "en", "fr", "es", "de")
+    LANGUAGE: str = "fr"  # Language code (e.g., "en", "fr", "es", "de")
 
 
 settings = Settings()
