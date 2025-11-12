@@ -29,6 +29,9 @@ dependencies = [
     "motor>=3.3.0",
     "pymongo>=4.6.0",
     "cryptography>=41.0.0",
+    # Production optimizations
+    "slowapi>=0.1.9",  # Rate limiting
+    "redis>=5.0.0",  # Optional: for distributed caching
     # Platform-specific PyTorch and NumPy versions
     # Intel Macs need older versions due to wheel compatibility
     "torch>=2.0.0,<2.3.0; platform_machine == 'x86_64' and sys_platform == 'darwin'",

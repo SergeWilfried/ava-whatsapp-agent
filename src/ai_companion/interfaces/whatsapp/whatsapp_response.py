@@ -12,7 +12,8 @@ from ai_companion.graph import graph_builder
 from ai_companion.modules.image import ImageToText
 from ai_companion.modules.speech import SpeechToText, TextToSpeech
 from ai_companion.settings import settings
-from ai_companion.services.business_service import get_business_service
+# Use optimized business service for production (500+ concurrent requests)
+from ai_companion.services.business_service_optimized import get_optimized_business_service
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +55,8 @@ async def whatsapp_handler(request: Request) -> Response:
                 logger.error("No phone_number_id found in webhook metadata")
                 return Response(content="Missing phone_number_id in webhook", status_code=400)
 
-            # Lookup business credentials by phone number ID
-            business_service = get_business_service()
+            # Lookup business credentials by phone number ID (using optimized service)
+            business_service = await get_optimized_business_service()
             business = await business_service.get_business_by_phone_number_id(phone_number_id)
 
             if not business:
