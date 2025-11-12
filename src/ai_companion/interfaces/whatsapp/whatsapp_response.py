@@ -12,8 +12,6 @@ from ai_companion.graph import graph_builder
 from ai_companion.modules.image import ImageToText
 from ai_companion.modules.speech import SpeechToText, TextToSpeech
 from ai_companion.settings import settings
-# Use optimized business service for production (500+ concurrent requests)
-from ai_companion.services.business_service_optimized import get_optimized_business_service
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +23,7 @@ image_to_text = ImageToText()
 # Router for WhatsApp respo
 whatsapp_router = APIRouter()
 
-# Fallback WhatsApp API credentials (for backwards compatibility)
+# WhatsApp API credentials from environment variables
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
 
@@ -48,31 +46,19 @@ async def whatsapp_handler(request: Request) -> Response:
             from_number = message["from"]
             session_id = from_number
 
-            # Extract phone number ID from metadata (this is the business phone number ID)
-            phone_number_id = change_value.get("metadata", {}).get("phone_number_id")
-
-            if not phone_number_id:
-                logger.error("No phone_number_id found in webhook metadata")
-                return Response(content="Missing phone_number_id in webhook", status_code=400)
-
-            # Lookup business credentials by phone number ID (using optimized service)
-            business_service = await get_optimized_business_service()
-            business = await business_service.get_business_by_phone_number_id(phone_number_id)
-
-            if not business:
-                logger.error(f"No business found for phone_number_id: {phone_number_id}")
-                return Response(content="Business not found for this phone number", status_code=404)
-
-            # Extract business-specific credentials
-            whatsapp_token = business.get("decryptedAccessToken")
-            business_name = business.get("name", "Unknown Business")
-            business_subdomain = business.get("subDomain", "unknown")
+            # Use environment variables for WhatsApp credentials
+            whatsapp_token = WHATSAPP_TOKEN
+            phone_number_id = WHATSAPP_PHONE_NUMBER_ID
 
             if not whatsapp_token:
-                logger.error(f"No valid WhatsApp token for business: {business_name}")
-                return Response(content="Invalid business credentials", status_code=500)
+                logger.error("WHATSAPP_TOKEN environment variable is not set")
+                return Response(content="WhatsApp token not configured", status_code=500)
 
-            logger.info(f"Processing message for business: {business_name} (subdomain: {business_subdomain})")
+            if not phone_number_id:
+                logger.error("WHATSAPP_PHONE_NUMBER_ID environment variable is not set")
+                return Response(content="WhatsApp phone number ID not configured", status_code=500)
+
+            logger.info(f"Processing message from {from_number}")
 
             # Get user message and handle different message types
             content = ""
@@ -95,8 +81,8 @@ async def whatsapp_handler(request: Request) -> Response:
                 content = message["text"]["body"]
 
             # Process message through the graph agent
-            # Use business subdomain + user number as session ID for multi-tenancy
-            session_id = f"{business_subdomain}:{from_number}"
+            # Use user number as session ID
+            session_id = from_number
 
             async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
                 graph = graph_builder.compile(checkpointer=short_term_memory)

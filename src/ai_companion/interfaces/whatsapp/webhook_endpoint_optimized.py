@@ -18,8 +18,8 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import httpx
 
+import os
 from ai_companion.interfaces.whatsapp.whatsapp_response import whatsapp_router
-from ai_companion.services.business_service_optimized import get_optimized_business_service
 
 logger = logging.getLogger(__name__)
 
@@ -37,19 +37,18 @@ async def lifespan(app: FastAPI):
     logger.info("Starting WhatsApp Webhook Service...")
 
     try:
-        # Initialize business service and connection pool
-        business_service = await get_optimized_business_service()
-        logger.info("Business service initialized")
-
-        # Store in app state for access in routes
-        app.state.business_service = business_service
-
-        # Optional: Create httpx client pool for WhatsApp API calls
+        # Create httpx client pool for WhatsApp API calls
         app.state.httpx_client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=5.0),
             limits=httpx.Limits(max_keepalive_connections=100, max_connections=200),
         )
         logger.info("HTTP client pool created")
+
+        # Verify required environment variables
+        if not os.getenv("WHATSAPP_TOKEN"):
+            logger.warning("WHATSAPP_TOKEN environment variable is not set")
+        if not os.getenv("WHATSAPP_PHONE_NUMBER_ID"):
+            logger.warning("WHATSAPP_PHONE_NUMBER_ID environment variable is not set")
 
         logger.info("✅ Application startup complete")
 
@@ -58,11 +57,6 @@ async def lifespan(app: FastAPI):
     finally:
         # Shutdown
         logger.info("Shutting down WhatsApp Webhook Service...")
-
-        # Close business service connections
-        if hasattr(app.state, 'business_service'):
-            await app.state.business_service.disconnect()
-            logger.info("Business service disconnected")
 
         # Close HTTP client
         if hasattr(app.state, 'httpx_client'):
@@ -96,18 +90,19 @@ async def health_check(request: Request) -> Dict:
     Health check endpoint for load balancers and monitoring.
     """
     try:
-        # Check MongoDB connection
-        business_service = await get_optimized_business_service()
-        if business_service.client:
-            await business_service.client.admin.command('ping')
-            db_status = "healthy"
-        else:
-            db_status = "disconnected"
+        # Check if required environment variables are set
+        has_token = bool(os.getenv("WHATSAPP_TOKEN"))
+        has_phone_id = bool(os.getenv("WHATSAPP_PHONE_NUMBER_ID"))
+
+        status_val = "healthy" if (has_token and has_phone_id) else "degraded"
 
         return {
-            "status": "healthy",
+            "status": status_val,
             "timestamp": time.time(),
-            "database": db_status,
+            "config": {
+                "whatsapp_token_configured": has_token,
+                "whatsapp_phone_number_id_configured": has_phone_id,
+            },
             "service": "whatsapp-webhook",
         }
     except Exception as e:
@@ -131,13 +126,14 @@ async def readiness_check(request: Request) -> Dict:
     Ensures service is ready to handle traffic.
     """
     try:
-        business_service = await get_optimized_business_service()
+        # Check if required environment variables are set
+        has_token = bool(os.getenv("WHATSAPP_TOKEN"))
+        has_phone_id = bool(os.getenv("WHATSAPP_PHONE_NUMBER_ID"))
 
-        # Check if connection pool is initialized
-        if not business_service._is_connected:
+        if not (has_token and has_phone_id):
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"ready": False, "reason": "Database not connected"}
+                content={"ready": False, "reason": "Required environment variables not configured"}
             )
 
         return {"ready": True, "timestamp": time.time()}
@@ -158,20 +154,10 @@ async def metrics(request: Request) -> Dict:
     Basic metrics endpoint. For production, consider Prometheus integration.
     """
     try:
-        business_service = await get_optimized_business_service()
-
-        # Get cache stats
-        cache_size = len(business_service.cache._cache)
-
         return {
-            "cache": {
-                "size": cache_size,
-                "max_size": business_service.cache.max_size,
-                "ttl_seconds": business_service.cache.ttl_seconds,
-            },
-            "connection_pool": {
-                "max_pool_size": business_service.max_pool_size,
-                "min_pool_size": business_service.min_pool_size,
+            "config": {
+                "whatsapp_token_configured": bool(os.getenv("WHATSAPP_TOKEN")),
+                "whatsapp_phone_number_id_configured": bool(os.getenv("WHATSAPP_PHONE_NUMBER_ID")),
             },
             "timestamp": time.time(),
         }
@@ -180,39 +166,7 @@ async def metrics(request: Request) -> Dict:
         return {"error": str(e), "timestamp": time.time()}
 
 
-# Cache management endpoints (admin only - add auth in production)
-@app.post("/admin/cache/clear", tags=["Admin"])
-@limiter.limit("1/minute")
-async def clear_cache(request: Request) -> Dict:
-    """Clear business cache. Use with caution."""
-    try:
-        business_service = await get_optimized_business_service()
-        await business_service.clear_cache()
-        logger.warning("Business cache cleared via admin endpoint")
-        return {"status": "success", "message": "Cache cleared"}
-    except Exception as e:
-        logger.error(f"Failed to clear cache: {e}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"status": "error", "error": str(e)}
-        )
-
-
-@app.post("/admin/cache/warmup", tags=["Admin"])
-@limiter.limit("1/minute")
-async def warmup_cache(request: Request) -> Dict:
-    """Warm up business cache with active businesses."""
-    try:
-        business_service = await get_optimized_business_service()
-        await business_service.warmup_cache(limit=100)
-        logger.info("Business cache warmed up via admin endpoint")
-        return {"status": "success", "message": "Cache warmed up"}
-    except Exception as e:
-        logger.error(f"Failed to warm up cache: {e}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"status": "error", "error": str(e)}
-        )
+# Cache management endpoints removed - no longer using database cache
 
 
 # Middleware for request timing and logging
