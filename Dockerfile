@@ -29,9 +29,6 @@ ENV VIRTUAL_ENV=/app/.venv \
 # Install the package in editable mode
 RUN uv pip install -e .
 
-# Define volumes
-VOLUME ["/app/data"]
-
 # Expose the port
 EXPOSE 8080
 
