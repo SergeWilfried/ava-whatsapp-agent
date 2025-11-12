@@ -29,5 +29,15 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_DB_PATH: str = "/app/data/memory.db"
     LANGUAGE: str = "en"  # Language code (e.g., "en", "fr", "es", "de")
 
+    # Restaurant Configuration
+    RESTAURANT_NAME: str = "Tasty Bites Restaurant"
+    RESTAURANT_PHONE: str = "(555) 123-4567"
+    RESTAURANT_ADDRESS: str = "123 Main Street, Downtown"
+    ENABLE_DELIVERY: bool = True
+    ENABLE_PICKUP: bool = True
+    DELIVERY_FEE: float = 3.50
+    FREE_DELIVERY_MINIMUM: float = 25.00
+    TAX_RATE: float = 0.08  # 8% tax rate
+
 
 settings = Settings()

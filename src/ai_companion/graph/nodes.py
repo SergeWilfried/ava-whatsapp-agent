@@ -8,6 +8,8 @@ from ai_companion.graph.state import AICompanionState
 from ai_companion.graph.utils.chains import (
     get_character_response_chain,
     get_router_chain,
+    get_order_processing_chain,
+    get_menu_display_chain,
 )
 from ai_companion.graph.utils.helpers import (
     get_chat_model,
@@ -17,6 +19,9 @@ from ai_companion.graph.utils.helpers import (
 from ai_companion.modules.memory.long_term.memory_manager import get_memory_manager
 from ai_companion.modules.schedules.context_generation import ScheduleContextGenerator
 from ai_companion.settings import settings
+from ai_companion.core.schedules import RESTAURANT_MENU, BUSINESS_HOURS, RESTAURANT_INFO, SPECIAL_OFFERS
+import json
+from datetime import datetime
 
 
 async def router_node(state: AICompanionState):
@@ -38,16 +43,37 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
     current_activity = ScheduleContextGenerator.get_current_activity()
     memory_context = state.get("memory_context", "")
 
-    chain = get_character_response_chain(state.get("summary", ""))
+    # Format restaurant info for injection
+    restaurant_info = f"{RESTAURANT_INFO['name']}\n"
+    restaurant_info += f"Address: {RESTAURANT_INFO['address']}\nPhone: {RESTAURANT_INFO['phone']}"
 
-    response = await chain.ainvoke(
-        {
-            "messages": state["messages"],
-            "current_activity": current_activity,
-            "memory_context": memory_context,
-        },
-        config,
-    )
+    # Create modified messages with injected restaurant info
+    system_prompt = get_character_response_chain(state.get("summary", ""))
+
+    # Manually format the system message with all variables
+    from ai_companion.core.prompts import get_character_card_prompt
+    system_message = get_character_card_prompt(settings.LANGUAGE)
+    if state.get("summary", ""):
+        system_message += f"\n\nSummary of conversation earlier with the customer: {state.get('summary', '')}"
+
+    # Replace placeholders
+    system_message = system_message.replace("{restaurant_name}", RESTAURANT_INFO['name'])
+    system_message = system_message.replace("{restaurant_info}", current_activity)
+    system_message = system_message.replace("{memory_context}", memory_context if memory_context else "No previous information about this customer.")
+    system_message = system_message.replace("{current_activity}", current_activity)
+
+    # Use the chain directly with the formatted prompt
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from ai_companion.graph.utils.helpers import AsteriskRemovalParser, get_chat_model
+
+    model = get_chat_model()
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        MessagesPlaceholder(variable_name="messages"),
+    ])
+    chain = prompt | model | AsteriskRemovalParser()
+
+    response = await chain.ainvoke({"messages": state["messages"]}, config)
     return {"messages": AIMessage(content=response)}
 
 
@@ -144,3 +170,73 @@ def memory_injection_node(state: AICompanionState):
     memory_context = memory_manager.format_memories_for_prompt(memories)
 
     return {"memory_context": memory_context}
+
+
+async def order_node(state: AICompanionState, config: RunnableConfig):
+    """Process customer order and calculate total."""
+    memory_context = state.get("memory_context", "")
+
+    # Format menu data for the chain
+    menu_data = json.dumps(RESTAURANT_MENU, indent=2)
+
+    chain = get_order_processing_chain()
+
+    try:
+        # Add menu data to messages
+        system_msg = HumanMessage(content=f"Restaurant Menu:\n{menu_data}\n\nTax Rate: {settings.TAX_RATE}")
+        messages_with_menu = state["messages"] + [system_msg]
+
+        response = await chain.ainvoke(
+            {
+                "messages": messages_with_menu,
+                "menu_data": menu_data,
+            },
+            config
+        )
+
+        # Format the confirmation message
+        confirmation = response.confirmation_message
+
+        return {"messages": AIMessage(content=confirmation)}
+    except Exception as e:
+        # Fallback to conversation if order processing fails
+        fallback_msg = "I'd be happy to help you with your order! Could you please tell me what items you'd like?"
+        return {"messages": AIMessage(content=fallback_msg)}
+
+
+async def menu_node(state: AICompanionState, config: RunnableConfig):
+    """Display menu items to the customer."""
+    memory_context = state.get("memory_context", "")
+
+    # Format menu data nicely
+    menu_text = "**Our Menu**\n\n"
+
+    # Pizzas
+    menu_text += "🍕 **Pizzas**\n"
+    for item in RESTAURANT_MENU["pizzas"]:
+        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
+
+    menu_text += "\n🍔 **Burgers**\n"
+    for item in RESTAURANT_MENU["burgers"]:
+        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
+
+    menu_text += "\n🍟 **Sides**\n"
+    for item in RESTAURANT_MENU["sides"]:
+        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
+
+    menu_text += "\n🥤 **Drinks**\n"
+    for item in RESTAURANT_MENU["drinks"]:
+        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
+
+    menu_text += "\n🍰 **Desserts**\n"
+    for item in RESTAURANT_MENU["desserts"]:
+        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
+
+    # Add today's special
+    today = datetime.now().strftime("%A").lower()
+    if today in SPECIAL_OFFERS["daily_specials"]:
+        menu_text += f"\n✨ **Today's Special**: {SPECIAL_OFFERS['daily_specials'][today]}\n"
+
+    menu_text += "\n\nWhat would you like to order? 😊"
+
+    return {"messages": AIMessage(content=menu_text)}

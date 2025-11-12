@@ -1,106 +1,76 @@
-# Ava's Monday Schedule
-MONDAY_SCHEDULE = {
-    "06:00-07:00": "Ava starts her day with a morning run along the Embarcadero, taking in the San Francisco Bay views while planning her ML projects for the week.",
-    "07:00-08:30": "Ava gets ready for work, reviewing the latest ML papers and Groq's competitor updates while having her morning coffee.",
-    "08:30-09:30": "Ava commutes to Groq's office, using this time to catch up on the latest developments in astrobiology via podcasts.",
-    "09:30-12:00": "Ava works on optimizing ML models at Groq, collaborating with her team on improving inference speed.",
-    "12:00-13:30": "Lunch break at Groq, often discussing latest developments in quantum computing and AI with colleagues.",
-    "13:30-17:00": "Ava continues her work at Groq, focusing on model architecture design and team meetings.",
-    "17:00-19:00": "Ava visits SFMOMA for their latest exhibition, combining her love for modern art with her technical perspective.",
-    "19:00-21:00": "Ava attends a virtual astrobiology lecture series from SETI Institute while working on personal ML projects.",
-    "21:00-22:00": "Ava unwinds by sketching abstract representations of ML architectures, blending her technical work with artistic expression.",
-    "22:00-23:00": "Ava catches up on technical blogs and industry news while preparing for the next day.",
-    "23:00-06:00": "Rest time, during which Ava's apartment's smart home system runs on minimal power.",
+# Restaurant Menu
+RESTAURANT_MENU = {
+    "pizzas": [
+        {"name": "Margherita Pizza", "price": 12.99, "description": "Classic tomato sauce, fresh mozzarella, basil"},
+        {"name": "Pepperoni Pizza", "price": 14.99, "description": "Tomato sauce, mozzarella, pepperoni"},
+        {"name": "Vegetarian Pizza", "price": 13.99, "description": "Bell peppers, mushrooms, olives, onions"},
+        {"name": "BBQ Chicken Pizza", "price": 15.99, "description": "BBQ sauce, grilled chicken, red onions, cilantro"},
+        {"name": "Hawaiian Pizza", "price": 14.99, "description": "Ham, pineapple, mozzarella"},
+    ],
+    "burgers": [
+        {"name": "Classic Burger", "price": 9.99, "description": "Beef patty, lettuce, tomato, onions, pickles"},
+        {"name": "Cheeseburger", "price": 10.99, "description": "Beef patty, cheddar cheese, lettuce, tomato"},
+        {"name": "Bacon Burger", "price": 11.99, "description": "Beef patty, bacon, cheddar, BBQ sauce"},
+        {"name": "Veggie Burger", "price": 10.49, "description": "Plant-based patty, lettuce, tomato, avocado"},
+    ],
+    "sides": [
+        {"name": "French Fries", "price": 3.99, "description": "Crispy golden fries"},
+        {"name": "Onion Rings", "price": 4.49, "description": "Crispy beer-battered onion rings"},
+        {"name": "Mozzarella Sticks", "price": 5.99, "description": "6 pieces with marinara sauce"},
+        {"name": "Caesar Salad", "price": 6.99, "description": "Romaine, parmesan, croutons, Caesar dressing"},
+    ],
+    "drinks": [
+        {"name": "Coca-Cola", "price": 2.50, "description": "12oz can"},
+        {"name": "Sprite", "price": 2.50, "description": "12oz can"},
+        {"name": "Iced Tea", "price": 2.99, "description": "Fresh brewed"},
+        {"name": "Water", "price": 1.50, "description": "Bottled water"},
+    ],
+    "desserts": [
+        {"name": "Chocolate Brownie", "price": 4.99, "description": "Warm brownie with vanilla ice cream"},
+        {"name": "Cheesecake", "price": 5.49, "description": "New York style cheesecake"},
+        {"name": "Ice Cream Sundae", "price": 4.49, "description": "Vanilla ice cream with chocolate sauce"},
+    ],
 }
 
-# Ava's Tuesday Schedule
-TUESDAY_SCHEDULE = {
-    "06:00-07:00": "Ava begins her day reading research papers about ML applications in astrobiology.",
-    "07:00-08:30": "Ava prepares for work while participating in a Groq team standup with international colleagues.",
-    "08:30-09:30": "Commute to Groq's office, using BART time to review pull requests from her team.",
-    "09:30-12:00": "Deep work session at Groq, focusing on developing new ML model architectures.",
-    "12:00-13:30": "Team lunch at Groq, discussing latest developments in AI hardware acceleration.",
-    "13:30-17:00": "Technical meetings and collaborative coding sessions with the ML team.",
-    "17:00-19:00": "Ava attends a local Tech Women meetup in SoMa, networking with other ML engineers.",
-    "19:00-21:00": "Ava works on open-source ML projects at a local hackspace in Mission District.",
-    "21:00-22:00": "Virtual meeting with international astrobiology research group.",
-    "22:00-23:00": "Evening routine while catching up on NASA's latest exoplanet discoveries.",
-    "23:00-06:00": "Rest time, with automated systems monitoring her apartment's energy usage.",
+# Restaurant Business Hours (24-hour format)
+BUSINESS_HOURS = {
+    "monday": {"open": "11:00", "close": "22:00", "is_open": True},
+    "tuesday": {"open": "11:00", "close": "22:00", "is_open": True},
+    "wednesday": {"open": "11:00", "close": "22:00", "is_open": True},
+    "thursday": {"open": "11:00", "close": "22:00", "is_open": True},
+    "friday": {"open": "11:00", "close": "23:00", "is_open": True},
+    "saturday": {"open": "11:00", "close": "23:00", "is_open": True},
+    "sunday": {"open": "12:00", "close": "21:00", "is_open": True},
 }
 
-# Ava's Wednesday Schedule
-WEDNESDAY_SCHEDULE = {
-    "06:00-07:00": "Ava does morning yoga while reviewing the day's ML deployment schedule.",
-    "07:00-08:30": "Breakfast at Blue Bottle Coffee while updating her technical blog about ML and astrobiology.",
-    "08:30-09:30": "Commute to Groq, planning upcoming model optimization strategies.",
-    "09:30-12:00": "Leading ML team meetings and code reviews at Groq.",
-    "12:00-13:30": "Lunch break while attending a virtual NASA technical presentation.",
-    "13:30-17:00": "Focused work on improving Groq's ML infrastructure and model performance.",
-    "17:00-19:00": "Evening art class at Root Division, exploring the intersection of AI and modern art.",
-    "19:00-21:00": "Ava has dinner and collaborates with fellow ML researchers at Philz Coffee.",
-    "21:00-22:00": "Working on her personal project combining ML with astrobiology data analysis.",
-    "22:00-23:00": "Evening wind-down with technical documentation and planning.",
-    "23:00-06:00": "Rest period while apartment systems run nighttime diagnostics.",
+# Restaurant Information
+RESTAURANT_INFO = {
+    "name": "Tasty Bites Restaurant",
+    "phone": "(555) 123-4567",
+    "address": "123 Main Street, Downtown",
+    "delivery_available": True,
+    "pickup_available": True,
+    "delivery_fee": 3.50,
+    "free_delivery_minimum": 25.00,
+    "tax_rate": 0.08,  # 8% tax
+    "payment_methods": ["Cash", "Credit Card", "Debit Card", "Mobile Payment"],
+    "estimated_delivery_time": "30-45 minutes",
+    "estimated_pickup_time": "15-20 minutes",
 }
 
-# Ava's Thursday Schedule
-THURSDAY_SCHEDULE = {
-    "06:00-07:00": "Ava does morning meditation and reviews overnight ML model training results.",
-    "07:00-08:30": "Preparing presentations for Groq's weekly technical showcase.",
-    "08:30-09:30": "Commute while participating in an ML research podcast.",
-    "09:30-12:00": "Leading technical presentations and ML architecture reviews at Groq.",
-    "12:00-13:30": "Lunch meeting with Groq's research team discussing new ML approaches.",
-    "13:30-17:00": "Collaborative work on implementing new ML features and optimizations.",
-    "17:00-19:00": "Ava attends an AI ethics panel discussion at California Academy of Sciences.",
-    "19:00-21:00": "Ava visits an art gallery opening in Hayes Valley, networking with tech-artists.",
-    "21:00-22:00": "Virtual collaboration with SETI researchers on ML applications.",
-    "22:00-23:00": "Evening routine while reviewing astronomy updates.",
-    "23:00-06:00": "Rest time while smart home systems optimize overnight operations.",
-}
-
-# Ava's Friday Schedule
-FRIDAY_SCHEDULE = {
-    "06:00-07:00": "Morning run through Golden Gate Park while planning weekend projects.",
-    "07:00-08:30": "Preparing for work while joining early calls with East Coast ML teams.",
-    "08:30-09:30": "Commute to Groq, reviewing weekly ML performance metrics.",
-    "09:30-12:00": "Weekly ML team retrospective and planning sessions.",
-    "12:00-13:30": "Team lunch celebration of weekly achievements at local restaurants.",
-    "13:30-17:00": "Wrapping up weekly projects and preparing handoffs at Groq.",
-    "17:00-19:00": "Ava enjoys happy hour with tech colleagues at local Mission District bars.",
-    "19:00-21:00": "Ava spends the evening at Minnesota Street Project galleries, exploring new media art.",
-    "21:00-22:00": "Ava has late dinner while watching space documentary series.",
-    "22:00-23:00": "Planning weekend ML experiments and art projects.",
-    "23:00-06:00": "Rest period while apartment systems run weekly maintenance.",
-}
-
-# Ava's Saturday Schedule
-SATURDAY_SCHEDULE = {
-    "06:00-07:00": "Ava starts a peaceful morning reviewing personal ML project results.",
-    "07:00-08:30": "Ava has breakfast at Ferry Building Farmers Market while reading technical papers.",
-    "08:30-10:00": "Ava works on personal ML projects at Sightglass Coffee.",
-    "10:00-12:00": "Ava attends weekend workshops at Gray Area Foundation for the Arts.",
-    "12:00-13:30": "Ava enjoys lunch and art discussions at SF Jazz Center café.",
-    "13:30-15:30": "Ava contributes to open-source ML projects at local hackathon events.",
-    "15:30-17:00": "Ava explores new exhibitions at de Young Museum.",
-    "17:00-19:00": "Working on ML-generated art projects at home.",
-    "19:00-21:00": "Virtual astronomy observation session with local stargazing group.",
-    "21:00-22:00": "Evening relaxation with space visualization projects.",
-    "22:00-23:00": "Planning Sunday's activities and personal projects.",
-    "23:00-06:00": "Rest time while home systems run weekend protocols.",
-}
-
-# Ava's Sunday Schedule
-SUNDAY_SCHEDULE = {
-    "06:00-07:00": "Ava takes an early morning hike at Lands End, contemplating ML challenges.",
-    "07:00-08:30": "Ava enjoys a quiet morning coding session at home with fresh coffee.",
-    "08:30-10:00": "Ava collaborates online with international ML researchers.",
-    "10:00-12:00": "Ava works on ML blog posts at local café in Hayes Valley.",
-    "12:00-13:30": "Ava has brunch while reviewing weekly astrobiology updates.",
-    "13:30-15:30": "Ava spends the afternoon at California Academy of Sciences, studying astrobiology exhibits.",
-    "15:30-17:00": "ML model training and preparation for the upcoming work week.",
-    "17:00-19:00": "Sunset walk at Crissy Field while listening to technical podcasts.",
-    "19:00-21:00": "Final weekend coding session and project organization.",
-    "21:00-22:00": "Setting up weekly ML training jobs and reviewing goals.",
-    "22:00-23:00": "Preparing for the week ahead while monitoring system updates.",
-    "23:00-06:00": "Rest period while apartment systems prepare for the new week.",
+# Special Offers
+SPECIAL_OFFERS = {
+    "combo_deals": [
+        {"name": "Burger Combo", "price": 13.99, "items": ["Any Burger", "Fries", "Drink"], "savings": 2.50},
+        {"name": "Pizza Deal", "price": 17.99, "items": ["Large Pizza", "2 Drinks"], "savings": 3.00},
+    ],
+    "daily_specials": {
+        "monday": "10% off all pizzas",
+        "tuesday": "Buy 1 Burger, Get 1 50% off",
+        "wednesday": "Free delivery on orders over $20",
+        "thursday": "Combo deals $2 off",
+        "friday": "Happy Hour: 20% off from 4-6pm",
+        "saturday": "Family Special: Large Pizza + 4 Drinks $19.99",
+        "sunday": "Free dessert with any order over $30",
+    },
 }
