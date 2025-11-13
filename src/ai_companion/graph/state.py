@@ -20,6 +20,7 @@ class AICompanionState(MessagesState):
         location_data (dict): Location data for location messages.
         contact_data (dict): Contact data for contact messages.
         last_interactive_sent (str): Tracks the last interactive type sent to prevent loops.
+        user_phone (str): User's phone number (used as session identifier for quizzes).
     """
 
     summary: str
@@ -34,3 +35,4 @@ class AICompanionState(MessagesState):
     location_data: dict
     contact_data: dict
     last_interactive_sent: str  # Tracks the last interactive type sent to prevent loops
+    user_phone: str  # User's phone number for session tracking

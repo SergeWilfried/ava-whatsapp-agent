@@ -308,10 +308,13 @@ class InteractiveMessageDecider:
         Returns:
             Interactive component dict with buttons or list
         """
-        if len(options) <= 3:
-            # Use buttons for 2-3 options (great for True/False or simple choice)
+        # Check if any option exceeds 20 characters - if so, use list instead of buttons
+        max_option_length = max(len(opt.strip()) for opt in options) if options else 0
+
+        if len(options) <= 3 and max_option_length <= 20:
+            # Use buttons only if we have ≤3 options AND all fit within 20 chars
             buttons = [
-                {"id": f"quiz_ans_{i}", "title": opt[:20]}
+                {"id": f"quiz_ans_{i}", "title": opt.strip()}
                 for i, opt in enumerate(options)
             ]
             return create_reply_buttons(
@@ -320,14 +323,14 @@ class InteractiveMessageDecider:
                 header_text=header or "Quiz Question"
             )
         else:
-            # Use list for 4+ options (typical multiple choice)
+            # Use list for 4+ options OR if any option is too long
             sections = [{
                 "title": "Answer Options",
                 "rows": [
                     {
                         "id": f"quiz_ans_{i}",
-                        "title": opt[:24],
-                        "description": opt[24:96] if len(opt) > 24 else ""
+                        "title": opt.strip()[:24],
+                        "description": opt.strip()[24:96] if len(opt.strip()) > 24 else ""
                     }
                     for i, opt in enumerate(options[:10])
                 ]
@@ -466,21 +469,29 @@ class InteractiveMessageDecider:
         """
         import re
 
-        # Pattern 1: Lettered options (a), b), c))
-        pattern1 = r'[a-d]\)\s*([^,]+?)(?:\s*[,;]|\s*$)'
-        matches1 = re.findall(pattern1, text, re.IGNORECASE)
+        # Pattern 1: Lettered options on separate lines or with commas (a), b), c), d))
+        # Match options like "A) answer" or "a) answer" on new lines
+        pattern1 = r'^[a-d]\)\s*(.+?)$'
+        matches1 = re.findall(pattern1, text, re.IGNORECASE | re.MULTILINE)
 
         if matches1 and len(matches1) >= 2:
             return [m.strip() for m in matches1]
 
-        # Pattern 2: Numbered options (1., 2., 3.)
-        pattern2 = r'\d+\.\s*([^,\n]+?)(?:\s*[,;\n]|\s*$)'
-        matches2 = re.findall(pattern2, text)
+        # Pattern 2: Numbered options on separate lines (1., 2., 3., 4.)
+        pattern2 = r'^\d+\.\s*(.+?)$'
+        matches2 = re.findall(pattern2, text, re.MULTILINE)
 
         if matches2 and len(matches2) >= 2:
             return [m.strip() for m in matches2]
 
-        # Pattern 3: Comma-separated list with "or"
+        # Pattern 3: Inline lettered options with commas/semicolons
+        pattern3 = r'[a-d]\)\s*([^,;]+?)(?:\s*[,;]|\s*(?=[a-d]\))|$)'
+        matches3 = re.findall(pattern3, text, re.IGNORECASE)
+
+        if matches3 and len(matches3) >= 2:
+            return [m.strip() for m in matches3]
+
+        # Pattern 4: Comma-separated list with "or"
         if " or " in text and text.count(",") >= 1:
             # Split by comma and "or"
             parts = re.split(r',\s*|\s+or\s+', text)

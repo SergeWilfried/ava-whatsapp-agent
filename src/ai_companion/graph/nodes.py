@@ -10,6 +10,7 @@ from ai_companion.graph.interactive_logic import (
     should_send_interactive_after_response,
 )
 from ai_companion.graph.information_collector import InformationCollector
+from ai_companion.graph.quiz_evaluator import QuizEvaluator
 from ai_companion.interfaces.whatsapp.interactive_components import create_location_request
 from ai_companion.graph.utils.chains import (
     get_character_response_chain,
@@ -121,6 +122,64 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
             "messages": AIMessage(content="Thanks for sharing your location. I'll use it to tailor the next steps for you."),
             "last_interactive_sent": ""  # Reset state
         }
+
+    # QUIZ EVALUATION LOGIC
+    # Check if this is a quiz answer response
+    quiz_answer_index = QuizEvaluator.parse_quiz_response(user_message)
+    user_phone = state.get("user_phone", "")  # Assuming user_phone is in state
+
+    if quiz_answer_index is not None and QuizEvaluator.has_active_quiz(user_phone):
+        # Evaluate the quiz answer
+        evaluation = QuizEvaluator.evaluate_answer(user_phone, quiz_answer_index)
+
+        if evaluation.get("error"):
+            # Error occurred
+            return {
+                "messages": AIMessage(content=evaluation["error"]),
+                "last_interactive_sent": ""
+            }
+
+        # Check if quiz is complete
+        if evaluation["is_quiz_complete"]:
+            # Quiz finished - send completion message with navigation
+            completion_msg = QuizEvaluator.create_completion_message(evaluation)
+            nav_buttons = InteractiveMessageDecider.create_lesson_navigation_buttons()
+
+            # End the quiz session
+            QuizEvaluator.end_session(user_phone)
+
+            return {
+                "messages": AIMessage(content=completion_msg),
+                "interactive_component": nav_buttons,
+                "last_interactive_sent": "lesson_navigation"
+            }
+        else:
+            # Quiz continues - send feedback and next question
+            feedback_msg = QuizEvaluator.create_feedback_message(evaluation)
+
+            # Get next question
+            session = QuizEvaluator.get_session(user_phone)
+            if session and session.current_question:
+                next_question = session.current_question
+
+                # Create interactive buttons for next question
+                quiz_buttons = InteractiveMessageDecider.create_quiz_buttons(
+                    question=next_question.question,
+                    options=next_question.options,
+                    header=f"Question {session.progress}"
+                )
+
+                return {
+                    "messages": AIMessage(content=feedback_msg),
+                    "interactive_component": quiz_buttons,
+                    "last_interactive_sent": "quiz_question"
+                }
+            else:
+                # Shouldn't happen, but handle gracefully
+                return {
+                    "messages": AIMessage(content=feedback_msg),
+                    "last_interactive_sent": ""
+                }
 
     # Check if user message warrants immediate interactive response
     # CRITICAL: Don't detect intent on button responses - they're already handled

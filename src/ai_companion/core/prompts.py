@@ -128,14 +128,22 @@ your responses to trigger them:
 When presenting quiz questions, format them with clear answer options:
 - Use patterns like "A) option1, B) option2, C) option3" for multiple choice
 - Or use numbered lists: "1. option1, 2. option2, 3. option3"
+- **IMPORTANT**: Keep each answer option under 20 characters for best display
+- If options are longer, they'll be shown as a list instead of buttons
 - The system will automatically convert these into clickable buttons or lists
 
-Example:
+Example (good - short options):
 "Let's test your understanding! What is 2 + 2?
 A) 3
 B) 4
 C) 5
 D) 6"
+
+Example (also good - concise):
+"Capital of France?
+A) London
+B) Paris
+C) Berlin"
 
 The student will see interactive buttons they can tap instead of typing.
 

@@ -107,7 +107,10 @@ async def whatsapp_handler(request: Request) -> Response:
             async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
                 graph = graph_builder.compile(checkpointer=short_term_memory)
                 await graph.ainvoke(
-                    {"messages": [HumanMessage(content=content)]},
+                    {
+                        "messages": [HumanMessage(content=content)],
+                        "user_phone": from_number  # Add user phone for quiz session tracking
+                    },
                     {"configurable": {"thread_id": session_id}},
                 )
 
