@@ -87,6 +87,39 @@ Display relevant menu items based on the customer's request.
 What would you like to order?"
 """
 
+IMAGE_SCENARIO_PROMPT = """
+Create an engaging first-person scenario based on the recent conversation context.
+Imagine you're describing a scene from the restaurant perspective.
+Provide both a narrative response and a detailed visual prompt for image generation.
+
+# Recent Conversation
+{chat_history}
+
+# Objective
+1. Create a brief, engaging first-person narrative response
+2. Generate a detailed visual prompt that captures the scene you're describing
+
+# Example Response Format
+For "What does the Margherita pizza look like?":
+{{
+    "narrative": "Our Margherita pizza is a classic! Fresh mozzarella, ripe tomatoes, and aromatic basil on a perfectly crispy crust.",
+    "image_prompt": "Delicious Margherita pizza on wooden board, fresh mozzarella cheese, bright red tomato sauce, green basil leaves, golden crispy crust, professional food photography, appetizing presentation, warm lighting"
+}}
+"""
+
+IMAGE_ENHANCEMENT_PROMPT = """
+Enhance the given prompt using the best prompt engineering techniques such as providing context, specifying style, medium, lighting, and camera details if applicable. If the prompt requests a realistic style, the enhanced prompt should include the image extension .HEIC.
+
+# Original Prompt
+{prompt}
+
+# Objective
+**Enhance Prompt**: Add relevant details to the prompt, including context, description, specific visual elements, mood, and technical details. For realistic prompts, add '.HEIC' in the output specification.
+
+# Example
+"realistic photo of a burger" -> "professional food photography of a gourmet burger with melted cheese, fresh lettuce, tomato, on artisan bun, wooden table, natural lighting, shot with 50mm f/1.8 lens, 8425.HEIC"
+"""
+
 def get_character_card_prompt(language: str = "en") -> str:
     """Get the restaurant assistant prompt with language-specific instructions."""
     language_instruction = ""
