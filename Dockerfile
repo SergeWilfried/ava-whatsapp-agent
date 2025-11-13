@@ -6,6 +6,8 @@ WORKDIR /app
 
 # Set environment variables (e.g., set Python to run in unbuffered mode)
 ENV PYTHONUNBUFFERED 1
+ENV LANGUAGE=fr
+ENV CLEAR_SHORT_TERM_MEMORY=true
 
 # Install system dependencies for building libraries
 RUN apt-get update && apt-get install -y \
