@@ -46,6 +46,7 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
     memory_context = state.get("memory_context", "")
     user_message = state["messages"][-1].content
     is_button_response = "[Button clicked:" in user_message
+    last_interactive_sent = state.get("last_interactive_sent", "")
 
     # Check for information collection intents
     collection_intent = InformationCollector.detect_collection_intent(user_message)
@@ -58,7 +59,8 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         )
         return {
             "messages": AIMessage(content="Let's schedule a session! When would you like to meet?"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "date_selection"
         }
 
     elif collection_intent == "location":
@@ -68,27 +70,30 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         )
         return {
             "messages": AIMessage(content="I need your location to assist you:"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "location_request"
         }
 
-    # Handle scheduling flow responses
-    elif "[List selection:" in user_message and "date_" in user_message:
+    # Handle scheduling flow responses (most specific first)
+    elif "[List selection:" in user_message and "date_" in user_message and last_interactive_sent == "date_selection":
         # User selected a date - now show time slots
         interactive = InformationCollector.create_time_slot_list()
         return {
             "messages": AIMessage(content="Great! Now choose a convenient time:"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "time_selection"
         }
 
-    elif "[List selection:" in user_message and any(x in user_message for x in ["Morning", "Afternoon", "Evening"]):
+    elif "[List selection:" in user_message and any(x in user_message for x in ["Morning", "Afternoon", "Evening"]) and last_interactive_sent == "time_selection":
         # User selected a time - ask for duration
         interactive = InformationCollector.create_duration_buttons()
         return {
             "messages": AIMessage(content="How long would you like the session?"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "duration_selection"
         }
 
-    elif "[Button clicked:" in user_message and "duration_" in user_message:
+    elif "[Button clicked:" in user_message and "duration_" in user_message and last_interactive_sent == "duration_selection":
         # User selected duration - confirm booking
         booking_details = InformationCollector.extract_booking_info(
             [msg.content for msg in state["messages"]]
@@ -96,33 +101,38 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         interactive = InformationCollector.create_confirmation_with_details(booking_details)
         return {
             "messages": AIMessage(content="Perfect! Please confirm your booking:"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "booking_confirmation"
         }
 
-    elif "[Button clicked:" in user_message and "confirm_booking" in user_message:
+    elif "[Button clicked:" in user_message and "confirm_booking" in user_message and last_interactive_sent == "booking_confirmation":
         # Booking confirmed - send confirmation
         return {
-            "messages": AIMessage(content="✅ Your session has been booked! You'll receive a confirmation shortly.")
+            "messages": AIMessage(content="✅ Your session has been booked! You'll receive a confirmation shortly."),
+            "last_interactive_sent": ""  # Reset state
         }
-    elif "[Button clicked:" in user_message and "cancel_booking" in user_message:
+    elif "[Button clicked:" in user_message and "cancel_booking" in user_message and last_interactive_sent == "booking_confirmation":
         return {
-            "messages": AIMessage(content="Got it — I've cancelled that booking. Let me know if you want to pick a new time.")
+            "messages": AIMessage(content="Got it — I've cancelled that booking. Let me know if you want to pick a new time."),
+            "last_interactive_sent": ""  # Reset state
         }
     elif "[Location shared:" in user_message:
         return {
-            "messages": AIMessage(content="Thanks for sharing your location. I'll use it to tailor the next steps for you.")
+            "messages": AIMessage(content="Thanks for sharing your location. I'll use it to tailor the next steps for you."),
+            "last_interactive_sent": ""  # Reset state
         }
 
     # Check if user message warrants immediate interactive response
     intent = InteractiveMessageDecider.detect_intent(user_message)
 
     # Handle specific intents with pre-built interactive messages
-    if intent == "list" and any(word in user_message.lower() for word in ["subject", "topic", "learn"]):
-        # User wants to see subjects/topics
+    if intent == "list" and any(word in user_message.lower() for word in ["subject", "topic", "learn"]) and last_interactive_sent != "subject_list":
+        # User wants to see subjects/topics (guard: don't resend if already sent)
         interactive = InteractiveMessageDecider.create_tutoring_subject_list()
         return {
             "messages": AIMessage(content="Choose a subject to learn:"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "subject_list"
         }
 
     elif intent == "binary":
@@ -145,7 +155,8 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
 
         return {
             "messages": AIMessage(content=response),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "binary_buttons"
         }
 
     elif intent == "confirmation":
@@ -155,24 +166,34 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         )
         return {
             "messages": AIMessage(content="I need your confirmation:"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "confirmation_buttons"
         }
 
-    # Handle responses to interactive messages
-    elif "[List selection:" in user_message:
-        # User selected from a list - offer difficulty level
-        interactive = InteractiveMessageDecider.create_difficulty_buttons()
-        return {
-            "messages": AIMessage(content="Great choice! What's your skill level?"),
-            "interactive_component": interactive
-        }
+    # Handle responses to interactive messages (subject/topic flow only)
+    # CRITICAL FIX: Add guards to prevent catching unrelated list selections
+    elif "[List selection:" in user_message and last_interactive_sent == "subject_list" and not any(x in user_message for x in ["date_", "Morning", "Afternoon", "Evening", "time_"]):
+        # User selected from subject list - offer difficulty level
+        # Guard: Only trigger if we just sent a subject list
+        if last_interactive_sent == "difficulty_buttons":
+            # Prevent loop: Already sent difficulty buttons, don't resend
+            pass
+        else:
+            interactive = InteractiveMessageDecider.create_difficulty_buttons()
+            return {
+                "messages": AIMessage(content="Great choice! What's your skill level?"),
+                "interactive_component": interactive,
+                "last_interactive_sent": "difficulty_buttons"
+            }
 
-    elif "[Button clicked:" in user_message and any(word in user_message.lower() for word in ["beginner", "intermediate", "advanced"]):
+    elif "[Button clicked:" in user_message and any(word in user_message.lower() for word in ["beginner", "intermediate", "advanced"]) and last_interactive_sent == "difficulty_buttons":
         # User selected difficulty - offer learning mode
+        # Guard: Only trigger if we just sent difficulty buttons
         interactive = InteractiveMessageDecider.create_learning_mode_buttons()
         return {
             "messages": AIMessage(content="How would you like to learn today?"),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "learning_mode_buttons"
         }
 
     # Generate regular response
@@ -194,10 +215,14 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
     if interactive:
         return {
             "messages": AIMessage(content=response),
-            "interactive_component": interactive
+            "interactive_component": interactive,
+            "last_interactive_sent": "auto_detected"  # Mark as auto-detected
         }
 
-    return {"messages": AIMessage(content=response)}
+    return {
+        "messages": AIMessage(content=response),
+        "last_interactive_sent": ""  # Clear state for normal responses
+    }
 
 
 async def image_node(state: AICompanionState, config: RunnableConfig):

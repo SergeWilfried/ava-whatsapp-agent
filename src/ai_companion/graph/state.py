@@ -19,6 +19,7 @@ class AICompanionState(MessagesState):
         interactive_type (str): Type of interactive message (buttons, list, location, location_request, contacts).
         location_data (dict): Location data for location messages.
         contact_data (dict): Contact data for contact messages.
+        last_interactive_sent (str): Tracks the last interactive type sent to prevent loops.
     """
 
     summary: str
@@ -32,3 +33,4 @@ class AICompanionState(MessagesState):
     interactive_type: str
     location_data: dict
     contact_data: dict
+    last_interactive_sent: str  # Tracks the last interactive type sent to prevent loops
