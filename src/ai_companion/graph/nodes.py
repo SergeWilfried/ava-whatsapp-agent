@@ -45,6 +45,7 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
     current_activity = ScheduleContextGenerator.get_current_activity()
     memory_context = state.get("memory_context", "")
     user_message = state["messages"][-1].content
+    is_button_response = "[Button clicked:" in user_message
 
     # Check for information collection intents
     collection_intent = InformationCollector.detect_collection_intent(user_message)
@@ -186,7 +187,9 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
     )
 
     # Check if response warrants a follow-up interactive message
-    interactive = should_send_interactive_after_response(response)
+    interactive = None
+    if not is_button_response:
+        interactive = should_send_interactive_after_response(response)
 
     if interactive:
         return {
