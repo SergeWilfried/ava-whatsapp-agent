@@ -27,7 +27,8 @@ class InteractiveMessageDecider:
     # Keywords that suggest confirmation is needed
     CONFIRMATION_KEYWORDS = [
         "confirm", "verify", "sure", "certain", "proceed",
-        "go ahead", "continue with", "finalize"
+        "go ahead", "continue with", "finalize",
+        "reset memory", "memory reset", "clear memory", "forget everything", "wipe memory"
     ]
 
     # Keywords that suggest multiple choice
@@ -335,8 +336,13 @@ def should_send_interactive_after_response(response_text: str) -> Optional[Dict]
 
     # Check if response is asking a binary question
     if "?" in response_text:
-        # Look for yes/no questions
-        if any(phrase in response_lower for phrase in ["do you want", "would you like", "shall i", "should i"]):
+        # Look for yes/no questions (expanded list)
+        yes_no_phrases = [
+            "do you want", "would you like", "shall i", "should i",
+            "can i help", "need help", "want me to", "shall we",
+            "ready to", "interested in"
+        ]
+        if any(phrase in response_lower for phrase in yes_no_phrases):
             # Extract the question
             sentences = response_text.split("?")
             question = sentences[0].strip() + "?"

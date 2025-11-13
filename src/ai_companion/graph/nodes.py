@@ -5,6 +5,12 @@ from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage
 from langchain_core.runnables import RunnableConfig
 
 from ai_companion.graph.state import AICompanionState
+from ai_companion.graph.interactive_logic import (
+    InteractiveMessageDecider,
+    should_send_interactive_after_response,
+)
+from ai_companion.graph.information_collector import InformationCollector
+from ai_companion.interfaces.whatsapp.interactive_components import create_location_request
 from ai_companion.graph.utils.chains import (
     get_character_response_chain,
     get_router_chain,
@@ -35,15 +41,76 @@ def context_injection_node(state: AICompanionState):
 
 
 async def conversation_node(state: AICompanionState, config: RunnableConfig):
-    """Conversation node with intelligent interactive message support."""
-    from ai_companion.graph.interactive_logic import (
-        InteractiveMessageDecider,
-        should_send_interactive_after_response
-    )
-
+    """Conversation node with intelligent interactive message support and information collection."""
     current_activity = ScheduleContextGenerator.get_current_activity()
     memory_context = state.get("memory_context", "")
     user_message = state["messages"][-1].content
+
+    # Check for information collection intents
+    collection_intent = InformationCollector.detect_collection_intent(user_message)
+
+    # Handle information collection scenarios
+    if collection_intent == "scheduling":
+        # User wants to schedule/book something
+        interactive = InformationCollector.create_date_selection_list(
+            title="Schedule Session"
+        )
+        return {
+            "messages": AIMessage(content="Let's schedule a session! When would you like to meet?"),
+            "interactive_component": interactive
+        }
+
+    elif collection_intent == "location":
+        # Request user's location
+        interactive = create_location_request(
+            "Please share your location so I can help you better"
+        )
+        return {
+            "messages": AIMessage(content="I need your location to assist you:"),
+            "interactive_component": interactive
+        }
+
+    # Handle scheduling flow responses
+    elif "[List selection:" in user_message and "date_" in user_message:
+        # User selected a date - now show time slots
+        interactive = InformationCollector.create_time_slot_list()
+        return {
+            "messages": AIMessage(content="Great! Now choose a convenient time:"),
+            "interactive_component": interactive
+        }
+
+    elif "[List selection:" in user_message and any(x in user_message for x in ["Morning", "Afternoon", "Evening"]):
+        # User selected a time - ask for duration
+        interactive = InformationCollector.create_duration_buttons()
+        return {
+            "messages": AIMessage(content="How long would you like the session?"),
+            "interactive_component": interactive
+        }
+
+    elif "[Button clicked:" in user_message and "duration_" in user_message:
+        # User selected duration - confirm booking
+        booking_details = InformationCollector.extract_booking_info(
+            [msg.content for msg in state["messages"]]
+        )
+        interactive = InformationCollector.create_confirmation_with_details(booking_details)
+        return {
+            "messages": AIMessage(content="Perfect! Please confirm your booking:"),
+            "interactive_component": interactive
+        }
+
+    elif "[Button clicked:" in user_message and "confirm_booking" in user_message:
+        # Booking confirmed - send confirmation
+        return {
+            "messages": AIMessage(content="✅ Your session has been booked! You'll receive a confirmation shortly.")
+        }
+    elif "[Button clicked:" in user_message and "cancel_booking" in user_message:
+        return {
+            "messages": AIMessage(content="Got it — I've cancelled that booking. Let me know if you want to pick a new time.")
+        }
+    elif "[Location shared:" in user_message:
+        return {
+            "messages": AIMessage(content="Thanks for sharing your location. I'll use it to tailor the next steps for you.")
+        }
 
     # Check if user message warrants immediate interactive response
     intent = InteractiveMessageDecider.detect_intent(user_message)
@@ -59,7 +126,12 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
 
     elif intent == "binary":
         # User asked a yes/no question, respond with yes/no buttons
-        # Generate response first
+        # Always add yes/no buttons for binary questions
+        interactive = InteractiveMessageDecider.create_binary_response(
+            "Would you like me to help you?"
+        )
+
+        # Generate response
         chain = get_character_response_chain(state.get("summary", ""))
         response = await chain.ainvoke(
             {
@@ -70,17 +142,10 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
             config,
         )
 
-        # If response contains a question, add yes/no buttons
-        if "?" in response:
-            question = response.split("?")[0].strip() + "?"
-            if len(question) < 150:
-                interactive = InteractiveMessageDecider.create_binary_response(question)
-                return {
-                    "messages": AIMessage(content=response),
-                    "interactive_component": interactive
-                }
-
-        return {"messages": AIMessage(content=response)}
+        return {
+            "messages": AIMessage(content=response),
+            "interactive_component": interactive
+        }
 
     elif intent == "confirmation":
         # User needs to confirm something
