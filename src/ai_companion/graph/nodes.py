@@ -2,9 +2,7 @@ import os
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableConfig
-from langchain.agents import create_tool_calling_agent, AgentExecutor
 
 from ai_companion.graph.state import AICompanionState
 from ai_companion.graph.utils.chains import (
@@ -16,11 +14,9 @@ from ai_companion.graph.utils.helpers import (
     get_text_to_image_module,
     get_text_to_speech_module,
 )
-from ai_companion.graph.tools import SEARCH_TOOLS
 from ai_companion.modules.memory.long_term.memory_manager import get_memory_manager
 from ai_companion.modules.schedules.context_generation import ScheduleContextGenerator
 from ai_companion.settings import settings
-from ai_companion.core.prompts import get_character_card_prompt
 
 
 async def router_node(state: AICompanionState):
@@ -39,78 +35,21 @@ def context_injection_node(state: AICompanionState):
 
 
 async def conversation_node(state: AICompanionState, config: RunnableConfig):
-    """Conversation node with agent capabilities for automatic tool use."""
+    """Simple conversation node without search tools."""
     current_activity = ScheduleContextGenerator.get_current_activity()
     memory_context = state.get("memory_context", "")
-    summary = state.get("summary", "")
 
-    # Build system message with character card and context
-    # Format the character card with current context
-    system_message = get_character_card_prompt("en").format(
-        memory_context=memory_context or "No previous memories available.",
-        current_activity=current_activity
+    chain = get_character_response_chain(state.get("summary", ""))
+
+    response = await chain.ainvoke(
+        {
+            "messages": state["messages"],
+            "current_activity": current_activity,
+            "memory_context": memory_context,
+        },
+        config,
     )
-
-    if summary:
-        system_message += f"\n\n## Conversation Summary:\n{summary}"
-
-    # Add tool usage guidance
-    system_message += """
-
-## Tool Usage:
-You have access to web search tools. Use them when:
-- You need current, up-to-date information
-- You're unsure about facts, statistics, or recent events
-- The user asks about current events, news, or trends
-- You need to verify information
-- The user asks questions requiring real-time data
-
-Always provide natural, conversational responses that incorporate search results seamlessly.
-"""
-
-    # Create agent prompt
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_message),
-        MessagesPlaceholder(variable_name="messages"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
-
-    # Get model with tools bound
-    model = get_chat_model()
-
-    # Create agent and executor
-    agent = create_tool_calling_agent(model, SEARCH_TOOLS, prompt)
-    agent_executor = AgentExecutor(
-        agent=agent,
-        tools=SEARCH_TOOLS,
-        verbose=True,
-        max_iterations=3,
-        handle_parsing_errors=True
-    )
-
-    try:
-        # Execute agent
-        response = await agent_executor.ainvoke(
-            {
-                "messages": state["messages"],
-            },
-            config,
-        )
-
-        return {"messages": AIMessage(content=response["output"])}
-
-    except Exception as e:
-        # Fallback to regular chain if agent fails
-        chain = get_character_response_chain(summary)
-        response = await chain.ainvoke(
-            {
-                "messages": state["messages"],
-                "current_activity": current_activity,
-                "memory_context": memory_context,
-            },
-            config,
-        )
-        return {"messages": AIMessage(content=response)}
+    return {"messages": AIMessage(content=response)}
 
 
 async def image_node(state: AICompanionState, config: RunnableConfig):
