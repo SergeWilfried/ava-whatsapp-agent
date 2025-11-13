@@ -35,12 +35,82 @@ def context_injection_node(state: AICompanionState):
 
 
 async def conversation_node(state: AICompanionState, config: RunnableConfig):
-    """Simple conversation node without search tools."""
+    """Conversation node with intelligent interactive message support."""
+    from ai_companion.graph.interactive_logic import (
+        InteractiveMessageDecider,
+        should_send_interactive_after_response
+    )
+
     current_activity = ScheduleContextGenerator.get_current_activity()
     memory_context = state.get("memory_context", "")
+    user_message = state["messages"][-1].content
 
+    # Check if user message warrants immediate interactive response
+    intent = InteractiveMessageDecider.detect_intent(user_message)
+
+    # Handle specific intents with pre-built interactive messages
+    if intent == "list" and any(word in user_message.lower() for word in ["subject", "topic", "learn"]):
+        # User wants to see subjects/topics
+        interactive = InteractiveMessageDecider.create_tutoring_subject_list()
+        return {
+            "messages": AIMessage(content="Choose a subject to learn:"),
+            "interactive_component": interactive
+        }
+
+    elif intent == "binary":
+        # User asked a yes/no question, respond with yes/no buttons
+        # Generate response first
+        chain = get_character_response_chain(state.get("summary", ""))
+        response = await chain.ainvoke(
+            {
+                "messages": state["messages"],
+                "current_activity": current_activity,
+                "memory_context": memory_context,
+            },
+            config,
+        )
+
+        # If response contains a question, add yes/no buttons
+        if "?" in response:
+            question = response.split("?")[0].strip() + "?"
+            if len(question) < 150:
+                interactive = InteractiveMessageDecider.create_binary_response(question)
+                return {
+                    "messages": AIMessage(content=response),
+                    "interactive_component": interactive
+                }
+
+        return {"messages": AIMessage(content=response)}
+
+    elif intent == "confirmation":
+        # User needs to confirm something
+        interactive = InteractiveMessageDecider.create_confirmation_response(
+            "Please confirm to proceed:"
+        )
+        return {
+            "messages": AIMessage(content="I need your confirmation:"),
+            "interactive_component": interactive
+        }
+
+    # Handle responses to interactive messages
+    elif "[List selection:" in user_message:
+        # User selected from a list - offer difficulty level
+        interactive = InteractiveMessageDecider.create_difficulty_buttons()
+        return {
+            "messages": AIMessage(content="Great choice! What's your skill level?"),
+            "interactive_component": interactive
+        }
+
+    elif "[Button clicked:" in user_message and any(word in user_message.lower() for word in ["beginner", "intermediate", "advanced"]):
+        # User selected difficulty - offer learning mode
+        interactive = InteractiveMessageDecider.create_learning_mode_buttons()
+        return {
+            "messages": AIMessage(content="How would you like to learn today?"),
+            "interactive_component": interactive
+        }
+
+    # Generate regular response
     chain = get_character_response_chain(state.get("summary", ""))
-
     response = await chain.ainvoke(
         {
             "messages": state["messages"],
@@ -49,6 +119,16 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         },
         config,
     )
+
+    # Check if response warrants a follow-up interactive message
+    interactive = should_send_interactive_after_response(response)
+
+    if interactive:
+        return {
+            "messages": AIMessage(content=response),
+            "interactive_component": interactive
+        }
+
     return {"messages": AIMessage(content=response)}
 
 
