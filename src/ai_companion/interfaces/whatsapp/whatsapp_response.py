@@ -91,6 +91,21 @@ async def whatsapp_handler(request: Request) -> Response:
                     content += f"\n[Image Analysis: {description}]"
                 except Exception as e:
                     logger.warning(f"Failed to analyze image: {e}")
+            elif message["type"] == "interactive":
+                # Handle button or list reply
+                interactive_data = message.get("interactive", {})
+                if interactive_data.get("type") == "button_reply":
+                    # User clicked a button
+                    button_id = interactive_data["button_reply"]["id"]
+                    button_title = interactive_data["button_reply"]["title"]
+                    content = f"{button_title}"  # Use button title as message
+                    logger.info(f"User clicked button: {button_id} - {button_title}")
+                elif interactive_data.get("type") == "list_reply":
+                    # User selected from list
+                    list_id = interactive_data["list_reply"]["id"]
+                    list_title = interactive_data["list_reply"]["title"]
+                    content = f"I'd like to order {list_title}"  # Convert to order intent
+                    logger.info(f"User selected from list: {list_id} - {list_title}")
             else:
                 content = message["text"]["body"]
 
@@ -110,6 +125,7 @@ async def whatsapp_handler(request: Request) -> Response:
 
             workflow = output_state.values.get("workflow", "conversation")
             response_message = output_state.values["messages"][-1].content
+            use_interactive_menu = output_state.values.get("use_interactive_menu", False)
 
             # Handle different response types based on workflow
             # Pass business credentials to send_response
@@ -126,6 +142,17 @@ async def whatsapp_handler(request: Request) -> Response:
                 success = await send_response(
                     from_number, response_message, "image", image_data,
                     phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                )
+            elif use_interactive_menu:
+                # Send interactive menu list
+                from ai_companion.interfaces.whatsapp.interactive_components import create_menu_list_from_restaurant_menu
+                from ai_companion.core.schedules import RESTAURANT_MENU
+
+                interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
+                success = await send_response(
+                    from_number, response_message, "interactive_list",
+                    phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                    interactive_component=interactive_comp
                 )
             else:
                 success = await send_response(
@@ -199,8 +226,19 @@ async def send_response(
     media_content: bytes = None,
     phone_number_id: Optional[str] = None,
     whatsapp_token: Optional[str] = None,
+    interactive_component: Optional[Dict] = None,
 ) -> bool:
-    """Send response to user via WhatsApp API."""
+    """Send response to user via WhatsApp API.
+
+    Args:
+        from_number: Recipient's phone number
+        response_text: Message text or header text for interactive messages
+        message_type: One of "text", "audio", "image", "interactive_button", "interactive_list"
+        media_content: Binary content for audio/image
+        phone_number_id: WhatsApp Business phone number ID
+        whatsapp_token: WhatsApp API access token
+        interactive_component: Structured data for interactive messages
+    """
     # Use business-specific credentials or fallback to env vars
     token = whatsapp_token or WHATSAPP_TOKEN
     phone_id = phone_number_id or WHATSAPP_PHONE_NUMBER_ID
@@ -229,7 +267,49 @@ async def send_response(
             logger.error(f"Media upload failed, falling back to text: {e}")
             message_type = "text"
 
-    if message_type == "text":
+    elif message_type == "interactive_button":
+        # Reply buttons (up to 3 buttons)
+        json_data = {
+            "messaging_product": "whatsapp",
+            "to": from_number,
+            "type": "interactive",
+            "interactive": interactive_component or {
+                "type": "button",
+                "body": {"text": response_text},
+                "action": {
+                    "buttons": [
+                        {"type": "reply", "reply": {"id": "btn_1", "title": "Option 1"}},
+                        {"type": "reply", "reply": {"id": "btn_2", "title": "Option 2"}},
+                    ]
+                }
+            }
+        }
+
+    elif message_type == "interactive_list":
+        # List message (up to 10 items per section)
+        json_data = {
+            "messaging_product": "whatsapp",
+            "to": from_number,
+            "type": "interactive",
+            "interactive": interactive_component or {
+                "type": "list",
+                "header": {"type": "text", "text": "Menu"},
+                "body": {"text": response_text},
+                "action": {
+                    "button": "View Options",
+                    "sections": [
+                        {
+                            "title": "Categories",
+                            "rows": [
+                                {"id": "cat_1", "title": "Option 1", "description": "Description"},
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+
+    else:  # Default to text
         json_data = {
             "messaging_product": "whatsapp",
             "to": from_number,

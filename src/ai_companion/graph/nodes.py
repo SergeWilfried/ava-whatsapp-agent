@@ -205,38 +205,19 @@ async def order_node(state: AICompanionState, config: RunnableConfig):
 
 
 async def menu_node(state: AICompanionState, config: RunnableConfig):
-    """Display menu items to the customer."""
-    memory_context = state.get("memory_context", "")
+    """Display menu items to the customer using interactive list."""
+    # Store flag to send interactive menu
+    # The response will be handled in the webhook with interactive components
 
-    # Format menu data nicely
-    menu_text = "**Our Menu**\n\n"
-
-    # Pizzas
-    menu_text += "🍕 **Pizzas**\n"
-    for item in RESTAURANT_MENU["pizzas"]:
-        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
-
-    menu_text += "\n🍔 **Burgers**\n"
-    for item in RESTAURANT_MENU["burgers"]:
-        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
-
-    menu_text += "\n🍟 **Sides**\n"
-    for item in RESTAURANT_MENU["sides"]:
-        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
-
-    menu_text += "\n🥤 **Drinks**\n"
-    for item in RESTAURANT_MENU["drinks"]:
-        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
-
-    menu_text += "\n🍰 **Desserts**\n"
-    for item in RESTAURANT_MENU["desserts"]:
-        menu_text += f"• {item['name']} - ${item['price']:.2f}\n  {item['description']}\n"
-
-    # Add today's special
+    # Add today's special to the message
     today = datetime.now().strftime("%A").lower()
+    special_text = ""
     if today in SPECIAL_OFFERS["daily_specials"]:
-        menu_text += f"\n✨ **Today's Special**: {SPECIAL_OFFERS['daily_specials'][today]}\n"
+        special_text = f"\n\n✨ Today's Special: {SPECIAL_OFFERS['daily_specials'][today]}"
 
-    menu_text += "\n\nWhat would you like to order? 😊"
+    menu_message = f"Here's our menu!{special_text}"
 
-    return {"messages": AIMessage(content=menu_text)}
+    return {
+        "messages": AIMessage(content=menu_message),
+        "use_interactive_menu": True  # Flag to trigger interactive component
+    }
