@@ -4,7 +4,8 @@
       "Bash(python:*)",
       "Bash(dir:*)",
       "Bash(set CLEAR_SHORT_TERM_MEMORY=true)",
-      "Bash(del test_clear_memory.py)"
+      "Bash(del test_clear_memory.py)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
