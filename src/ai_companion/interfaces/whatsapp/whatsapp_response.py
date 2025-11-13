@@ -77,6 +77,26 @@ async def whatsapp_handler(request: Request) -> Response:
                     content += f"\n[Image Analysis: {description}]"
                 except Exception as e:
                     logger.warning(f"Failed to analyze image: {e}")
+            elif message["type"] == "interactive":
+                # Handle interactive message responses (button clicks, list selections)
+                content = process_interactive_response(message)
+            elif message["type"] == "location":
+                # Handle location sharing
+                location = message["location"]
+                lat = location.get("latitude")
+                lon = location.get("longitude")
+                name = location.get("name", "")
+                address = location.get("address", "")
+                content = f"[Location shared: {name or 'Location'} at ({lat}, {lon})"
+                if address:
+                    content += f" - {address}"
+                content += "]"
+            elif message["type"] == "contacts":
+                # Handle contact sharing
+                contacts = message["contacts"]
+                content = f"[Contact(s) shared: "
+                content += ", ".join([c.get("name", {}).get("formatted_name", "Unknown") for c in contacts])
+                content += "]"
             else:
                 content = message["text"]["body"]
 
@@ -97,6 +117,12 @@ async def whatsapp_handler(request: Request) -> Response:
             workflow = output_state.values.get("workflow", "conversation")
             response_message = output_state.values["messages"][-1].content
 
+            # Check for interactive components in state
+            interactive_component = output_state.values.get("interactive_component")
+            interactive_type = output_state.values.get("interactive_type")
+            location_data = output_state.values.get("location_data")
+            contact_data = output_state.values.get("contact_data")
+
             # Handle different response types based on workflow
             # Pass business credentials to send_response
             if workflow == "audio":
@@ -112,6 +138,22 @@ async def whatsapp_handler(request: Request) -> Response:
                 success = await send_response(
                     from_number, response_message, "image", image_data,
                     phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                )
+            elif interactive_component or location_data or contact_data:
+                # Send interactive, location, or contact message
+                if location_data:
+                    message_type = "location"
+                elif contact_data:
+                    message_type = "contacts"
+                else:
+                    message_type = "interactive"
+
+                success = await send_response(
+                    from_number, response_message, message_type,
+                    phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                    interactive_component=interactive_component,
+                    location_data=location_data,
+                    contact_data=contact_data
                 )
             else:
                 success = await send_response(
@@ -152,6 +194,41 @@ async def download_media(media_id: str, whatsapp_token: Optional[str] = None) ->
         return media_response.content
 
 
+def process_interactive_response(message: Dict) -> str:
+    """Process interactive message response (button click or list selection).
+
+    Args:
+        message: WhatsApp message dict containing interactive response
+
+    Returns:
+        str: Formatted response text
+    """
+    interactive = message.get("interactive", {})
+    response_type = interactive.get("type")
+
+    if response_type == "button_reply":
+        # User clicked a button
+        button_reply = interactive.get("button_reply", {})
+        button_id = button_reply.get("id", "")
+        button_title = button_reply.get("title", "")
+        return f"[Button clicked: {button_title} (ID: {button_id})]"
+
+    elif response_type == "list_reply":
+        # User selected from a list
+        list_reply = interactive.get("list_reply", {})
+        row_id = list_reply.get("id", "")
+        row_title = list_reply.get("title", "")
+        row_description = list_reply.get("description", "")
+        result = f"[List selection: {row_title} (ID: {row_id})"
+        if row_description:
+            result += f" - {row_description}"
+        result += "]"
+        return result
+
+    else:
+        return f"[Interactive response: {response_type}]"
+
+
 async def process_audio_message(message: Dict, whatsapp_token: Optional[str] = None) -> str:
     """Download and transcribe audio message."""
     token = whatsapp_token or WHATSAPP_TOKEN
@@ -185,8 +262,26 @@ async def send_response(
     media_content: bytes = None,
     phone_number_id: Optional[str] = None,
     whatsapp_token: Optional[str] = None,
+    interactive_component: Optional[Dict] = None,
+    location_data: Optional[Dict] = None,
+    contact_data: Optional[Dict] = None,
 ) -> bool:
-    """Send response to user via WhatsApp API."""
+    """Send response to user via WhatsApp API.
+
+    Args:
+        from_number: Recipient's WhatsApp number
+        response_text: Text message content
+        message_type: Type of message (text, audio, image, interactive, location, contacts, poll)
+        media_content: Binary media content for audio/image
+        phone_number_id: WhatsApp Business phone number ID
+        whatsapp_token: WhatsApp API token
+        interactive_component: Interactive component dict (buttons, lists, etc.)
+        location_data: Location data dict from create_location_message()
+        contact_data: Contact data dict from create_contact_message()
+
+    Returns:
+        bool: True if message sent successfully
+    """
     # Use business-specific credentials or fallback to env vars
     token = whatsapp_token or WHATSAPP_TOKEN
     phone_id = phone_number_id or WHATSAPP_PHONE_NUMBER_ID
@@ -214,6 +309,45 @@ async def send_response(
         except Exception as e:
             logger.error(f"Media upload failed, falling back to text: {e}")
             message_type = "text"
+
+    if message_type == "interactive":
+        # Send interactive message (buttons, lists, etc.)
+        if not interactive_component:
+            logger.error("Interactive message type requires interactive_component")
+            message_type = "text"  # Fallback to text
+        else:
+            json_data = {
+                "messaging_product": "whatsapp",
+                "to": from_number,
+                "type": "interactive",
+                "interactive": interactive_component
+            }
+
+    elif message_type == "location":
+        # Send location message
+        if not location_data:
+            logger.error("Location message type requires location_data")
+            message_type = "text"
+        else:
+            json_data = {
+                "messaging_product": "whatsapp",
+                "to": from_number,
+                "type": "location",
+                "location": location_data
+            }
+
+    elif message_type == "contacts":
+        # Send contact message
+        if not contact_data:
+            logger.error("Contacts message type requires contact_data")
+            message_type = "text"
+        else:
+            json_data = {
+                "messaging_product": "whatsapp",
+                "to": from_number,
+                "type": "contacts",
+                **contact_data
+            }
 
     if message_type == "text":
         json_data = {
