@@ -123,7 +123,8 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         }
 
     # Check if user message warrants immediate interactive response
-    intent = InteractiveMessageDecider.detect_intent(user_message)
+    # CRITICAL: Don't detect intent on button responses - they're already handled
+    intent = InteractiveMessageDecider.detect_intent(user_message) if not is_button_response else "none"
 
     # Handle specific intents with pre-built interactive messages
     if intent == "list" and any(word in user_message.lower() for word in ["subject", "topic", "learn"]) and last_interactive_sent != "subject_list":
@@ -135,9 +136,9 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
             "last_interactive_sent": "subject_list"
         }
 
-    elif intent == "binary":
+    elif intent == "binary" and last_interactive_sent != "binary_buttons":
         # User asked a yes/no question, respond with yes/no buttons
-        # Always add yes/no buttons for binary questions
+        # Guard: Don't resend if already sent
         interactive = InteractiveMessageDecider.create_binary_response(
             "Would you like me to help you?"
         )
@@ -159,8 +160,9 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
             "last_interactive_sent": "binary_buttons"
         }
 
-    elif intent == "confirmation":
+    elif intent == "confirmation" and last_interactive_sent != "confirmation_buttons":
         # User needs to confirm something
+        # Guard: Don't resend if already sent (prevents reset memory loop!)
         interactive = InteractiveMessageDecider.create_confirmation_response(
             "Please confirm to proceed:"
         )
@@ -169,6 +171,12 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
             "interactive_component": interactive,
             "last_interactive_sent": "confirmation_buttons"
         }
+
+    # Handle confirmation button responses (e.g., from reset memory)
+    elif is_button_response and last_interactive_sent == "confirmation_buttons":
+        # User responded to confirmation - process it and reset state
+        # Let the regular response chain handle the actual action
+        pass  # Fall through to regular response generation
 
     # Handle responses to interactive messages (subject/topic flow only)
     # CRITICAL FIX: Add guards to prevent catching unrelated list selections
