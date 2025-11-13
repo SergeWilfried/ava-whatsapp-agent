@@ -173,10 +173,23 @@ async def conversation_node(state: AICompanionState, config: RunnableConfig):
         }
 
     # Handle confirmation button responses (e.g., from reset memory)
-    elif is_button_response and last_interactive_sent == "confirmation_buttons":
-        # User responded to confirmation - process it and reset state
-        # Let the regular response chain handle the actual action
-        pass  # Fall through to regular response generation
+    # MUST be checked BEFORE other button handlers to prevent re-triggering
+    if is_button_response and last_interactive_sent == "confirmation_buttons":
+        # User responded to confirmation - generate response and CLEAR state
+        chain = get_character_response_chain(state.get("summary", ""))
+        response = await chain.ainvoke(
+            {
+                "messages": state["messages"],
+                "current_activity": current_activity,
+                "memory_context": memory_context,
+            },
+            config,
+        )
+        # CRITICAL: Clear state to prevent loop
+        return {
+            "messages": AIMessage(content=response),
+            "last_interactive_sent": ""  # Reset state immediately
+        }
 
     # Handle responses to interactive messages (subject/topic flow only)
     # CRITICAL FIX: Add guards to prevent catching unrelated list selections
