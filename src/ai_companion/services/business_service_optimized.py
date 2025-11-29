@@ -226,6 +226,7 @@ class OptimizedBusinessService:
         Returns:
             Business document with decrypted credentials or None if not found
         """
+            
         # Check cache first
         cache_key = f"phone:{phone_number_id}"
         cached = await self.cache.get(cache_key)
