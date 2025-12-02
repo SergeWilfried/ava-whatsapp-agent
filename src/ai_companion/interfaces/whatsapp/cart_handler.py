@@ -33,6 +33,16 @@ class CartInteractionHandler:
         "debit_card": "debit_card",
         "mobile_payment": "mobile_payment",
         "cash": "cash",
+
+        # Order confirmation
+        "confirm_order": "confirm_order",
+        "edit_order": "edit_order",
+        "cancel_order": "cancel_order",
+
+        # Post-order actions
+        "track_order": "track_order",
+        "contact_support": "contact_support",
+        "new_order": "new_order",
     }
 
     @staticmethod
@@ -149,6 +159,26 @@ class CartInteractionHandler:
         if interaction_id in ["credit_card", "debit_card", "mobile_payment", "cash"]:
             return "handle_payment_method", {}
 
+        # Order confirmation
+        if interaction_id == "confirm_order":
+            return "confirm_order", {}
+
+        if interaction_id == "edit_order":
+            return "view_cart", {}
+
+        if interaction_id == "cancel_order":
+            return "clear_cart", {}
+
+        # Post-order actions
+        if interaction_id == "new_order":
+            return "show_menu", {"use_interactive_menu": True}
+
+        if interaction_id == "track_order":
+            return "conversation", {}  # Let AI handle tracking inquiries
+
+        if interaction_id == "contact_support":
+            return "conversation", {}  # Let AI handle support inquiries
+
         # Default: conversation
         return "conversation", {}
 
@@ -226,6 +256,24 @@ class CartInteractionHandler:
         }
         if interaction_id in payment_map:
             return payment_map[interaction_id]
+
+        # Order confirmation actions
+        confirmation_map = {
+            "confirm_order": "Yes, confirm my order",
+            "edit_order": "I want to edit my order",
+            "cancel_order": "Cancel my order"
+        }
+        if interaction_id in confirmation_map:
+            return confirmation_map[interaction_id]
+
+        # Post-order actions
+        post_order_map = {
+            "track_order": "I want to track my order",
+            "contact_support": "I need help with my order",
+            "new_order": "I want to place a new order"
+        }
+        if interaction_id in post_order_map:
+            return post_order_map[interaction_id]
 
         # Default: use title
         return title

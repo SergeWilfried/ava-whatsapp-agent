@@ -348,6 +348,33 @@ async def whatsapp_handler(request: Request) -> Response:
 
                         return Response(content="Payment method selected", status_code=200)
 
+                    elif node_name == "confirm_order":
+                        result = await cart_nodes.confirm_order_node(current_state_dict)
+
+                        # Persist state updates back to graph
+                        await graph.aupdate_state(
+                            config={"configurable": {"thread_id": session_id}},
+                            values=result
+                        )
+
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Order confirmed!"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            success = await send_response(
+                                from_number, response_message, "interactive_button",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Order confirmed", status_code=200)
+
                     else:
                         # Not a cart interaction or fallback to conversation
                         # Use text representation for conversation flow
@@ -405,9 +432,6 @@ async def whatsapp_handler(request: Request) -> Response:
                 )
             elif use_interactive_menu:
                 # Send interactive menu list
-                from ai_companion.interfaces.whatsapp.interactive_components import create_menu_list_from_restaurant_menu
-                from ai_companion.core.schedules import RESTAURANT_MENU
-
                 interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
                 success = await send_response(
                     from_number, response_message, "interactive_list",

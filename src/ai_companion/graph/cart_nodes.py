@@ -58,7 +58,7 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
 
     # Parse item ID from interactive reply or text
     # This would come from webhook handler's processing of interactive replies
-    current_item = state.get("current_item", {})
+    current_item = state.get("current_item") or {}
     menu_item_id = current_item.get("menu_item_id")
 
     if not menu_item_id:
@@ -115,7 +115,7 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
 async def handle_size_selection_node(state: AICompanionState) -> Dict:
     """Handle size selection for customizable items."""
     cart_service = CartService()
-    current_item = state.get("current_item", {})
+    current_item = state.get("current_item") or {}
     menu_item_id = current_item.get("id")
     category = current_item.get("category", "")
 
@@ -133,7 +133,7 @@ async def handle_size_selection_node(state: AICompanionState) -> Dict:
         size = "medium"  # Default
 
     # Store size in pending customization
-    pending = state.get("pending_customization", {}) or {}
+    pending = state.get("pending_customization") or {}
     pending["size"] = size
 
     # Ask about extras for pizzas and burgers
@@ -157,7 +157,7 @@ async def handle_extras_selection_node(state: AICompanionState) -> Dict:
     # Extract extras from last message
     last_message = state["messages"][-1].content.lower()
 
-    pending = state.get("pending_customization", {}) or {}
+    pending = state.get("pending_customization") or {}
     extras = pending.get("extras", [])
 
     # Parse extra selection (would come from interactive list reply)
@@ -182,9 +182,9 @@ async def finalize_customization_node(state: AICompanionState) -> Dict:
     cart_service = CartService()
     cart = get_or_create_cart(state)
 
-    current_item = state.get("current_item", {})
+    current_item = state.get("current_item") or {}
     menu_item_id = current_item.get("id")
-    pending = state.get("pending_customization", {}) or {}
+    pending = state.get("pending_customization") or {}
 
     size = pending.get("size")
     extras = pending.get("extras", [])
