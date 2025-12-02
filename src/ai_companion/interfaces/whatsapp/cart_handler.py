@@ -42,6 +42,7 @@ class CartInteractionHandler:
         # Post-order actions
         "track_order": "track_order",
         "contact_support": "contact_support",
+        "contact_us": "contact_us",
         "new_order": "new_order",
     }
 
@@ -132,8 +133,11 @@ class CartInteractionHandler:
         if interaction_id == "view_cart":
             return "view_cart", {}
 
-        if interaction_id == "continue_shopping" or interaction_id == "view_menu":
+        if interaction_id == "continue_shopping":
             return "show_menu", {"use_interactive_menu": True}
+
+        if interaction_id == "view_menu":
+            return "view_menu", {}
 
         if interaction_id == "checkout":
             return "checkout", {}
@@ -176,7 +180,7 @@ class CartInteractionHandler:
         if interaction_id == "track_order":
             return "conversation", {}  # Let AI handle tracking inquiries
 
-        if interaction_id == "contact_support":
+        if interaction_id == "contact_support" or interaction_id == "contact_us":
             return "conversation", {}  # Let AI handle support inquiries
 
         # Default: conversation
@@ -270,6 +274,7 @@ class CartInteractionHandler:
         post_order_map = {
             "track_order": "I want to track my order",
             "contact_support": "I need help with my order",
+            "contact_us": "I need to contact support",
             "new_order": "I want to place a new order"
         }
         if interaction_id in post_order_map:

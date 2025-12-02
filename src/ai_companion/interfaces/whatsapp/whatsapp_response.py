@@ -19,6 +19,7 @@ from ai_companion.interfaces.whatsapp.cart_handler import process_cart_interacti
 from ai_companion.graph import cart_nodes
 from ai_companion.interfaces.whatsapp.interactive_components import (
     create_menu_list_from_restaurant_menu,
+    create_quick_actions_buttons,
 )
 from ai_companion.core.schedules import RESTAURANT_MENU
 
@@ -133,7 +134,20 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     # Handle cart-specific nodes
                     if node_name == "show_menu":
-                        # User wants to see the menu
+                        # Show quick actions instead of direct menu
+                        interactive_comp = create_quick_actions_buttons()
+                        success = await send_response(
+                            from_number,
+                            "Welcome! 👋 How can I help you today?",
+                            "interactive_button",
+                            phone_number_id=phone_number_id,
+                            whatsapp_token=whatsapp_token,
+                            interactive_component=interactive_comp
+                        )
+                        return Response(content="Quick actions sent", status_code=200)
+
+                    elif node_name == "view_menu":
+                        # User selected "View Menu" - show the actual menu
                         interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
                         success = await send_response(
                             from_number,
