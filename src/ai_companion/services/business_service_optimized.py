@@ -242,7 +242,7 @@ class OptimizedBusinessService:
             business = await self.db.businesses.find_one(
                 {
                     "whatsappPhoneNumberIds": phone_number_id,
-                    "whatsappEnabled": True,
+                    # "whatsappEnabled": True,  # Temporarily disabled for testing
                     "isActive": True
                 },
                 {
@@ -254,6 +254,10 @@ class OptimizedBusinessService:
                     "whatsappAccessToken": 1,
                     "whatsappRefreshToken": 1,
                     "whatsappTokenExpiresAt": 1,
+                    "fbBusinessId": 1,  # Add for Meta integration
+                    "fbCatalogMapping": 1,  # Add for catalog sync
+                    "fbFlowMapping": 1,  # Add for Flow integration
+                    "locations": 1,  # Add for location support
                 }
             )
 

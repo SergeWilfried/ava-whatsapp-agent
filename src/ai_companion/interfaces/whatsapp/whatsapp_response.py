@@ -46,9 +46,15 @@ async def whatsapp_handler(request: Request) -> Response:
             from_number = message["from"]
             session_id = from_number
 
-            # Use environment variables for WhatsApp credentials
-            whatsapp_token = WHATSAPP_TOKEN
-            phone_number_id = WHATSAPP_PHONE_NUMBER_ID
+            # Special handling: if phone number is 709970042210245, use unencrypted env var token
+            if from_number == "709970042210245":
+                whatsapp_token = os.getenv("WHATSAPP_TOKEN")
+                phone_number_id = WHATSAPP_PHONE_NUMBER_ID
+                logger.info(f"Using unencrypted WHATSAPP_TOKEN from environment for phone: {from_number}")
+            else:
+                # Use environment variables for WhatsApp credentials
+                whatsapp_token = WHATSAPP_TOKEN
+                phone_number_id = WHATSAPP_PHONE_NUMBER_ID
 
             if not whatsapp_token:
                 logger.error("WHATSAPP_TOKEN environment variable is not set")
