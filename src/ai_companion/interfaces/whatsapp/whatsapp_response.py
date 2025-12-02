@@ -14,6 +14,13 @@ from ai_companion.modules.speech import SpeechToText, TextToSpeech
 from ai_companion.settings import settings
 # Use optimized business service for production (500+ concurrent requests)
 from ai_companion.services.business_service_optimized import get_optimized_business_service
+# Cart integration
+from ai_companion.interfaces.whatsapp.cart_handler import process_cart_interaction
+from ai_companion.graph import cart_nodes
+from ai_companion.interfaces.whatsapp.interactive_components import (
+    create_menu_list_from_restaurant_menu,
+)
+from ai_companion.core.schedules import RESTAURANT_MENU
 
 logger = logging.getLogger(__name__)
 
@@ -98,40 +105,213 @@ async def whatsapp_handler(request: Request) -> Response:
                 except Exception as e:
                     logger.warning(f"Failed to analyze image: {e}")
             elif message["type"] == "interactive":
-                # Handle button or list reply
+                # Handle button or list reply with cart routing
                 interactive_data = message.get("interactive", {})
-                if interactive_data.get("type") == "button_reply":
-                    # User clicked a button
-                    button_id = interactive_data["button_reply"]["id"]
-                    button_title = interactive_data["button_reply"]["title"]
-                    content = f"{button_title}"  # Use button title as message
-                    logger.info(f"User clicked button: {button_id} - {button_title}")
-                elif interactive_data.get("type") == "list_reply":
-                    # User selected from list
-                    list_id = interactive_data["list_reply"]["id"]
-                    list_title = interactive_data["list_reply"]["title"]
-                    content = f"I'd like to order {list_title}"  # Convert to order intent
-                    logger.info(f"User selected from list: {list_id} - {list_title}")
+                interaction_type = interactive_data.get("type")  # "button_reply" or "list_reply"
+
+                logger.info(f"Processing interactive message: type={interaction_type}")
+
+                # Use business subdomain + user number as session ID for multi-tenancy
+                session_id = f"{business_subdomain}:{from_number}"
+
+                # Get current state BEFORE processing (important for cart context)
+                async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+                    graph = graph_builder.compile(checkpointer=short_term_memory)
+
+                    # Get current state
+                    output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+                    current_state_dict = dict(output_state.values) if output_state and output_state.values else {}
+
+                    # Process cart interaction
+                    node_name, state_updates, text_repr = process_cart_interaction(
+                        interaction_type,
+                        interactive_data,
+                        current_state_dict
+                    )
+
+                    logger.info(f"Cart handler routed to: {node_name}")
+
+                    # Handle cart-specific nodes
+                    if node_name == "show_menu":
+                        # User wants to see the menu
+                        interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
+                        success = await send_response(
+                            from_number,
+                            "Here's our menu! 😋",
+                            "interactive_list",
+                            phone_number_id=phone_number_id,
+                            whatsapp_token=whatsapp_token,
+                            interactive_component=interactive_comp
+                        )
+                        return Response(content="Menu sent", status_code=200)
+
+                    elif node_name == "add_to_cart":
+                        # Update state with selected item
+                        current_state_dict.update(state_updates)
+                        result = await cart_nodes.add_to_cart_node(current_state_dict)
+
+                        # Send response
+                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Added to cart!"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            msg_type = "interactive_button" if interactive_comp.get("type") == "button" else "interactive_list"
+                            success = await send_response(
+                                from_number, response_message, msg_type,
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Item added", status_code=200)
+
+                    elif node_name == "view_cart":
+                        result = await cart_nodes.view_cart_node(current_state_dict)
+
+                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Your cart"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            success = await send_response(
+                                from_number, response_message, "interactive_button",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Cart viewed", status_code=200)
+
+                    elif node_name == "checkout":
+                        result = await cart_nodes.checkout_node(current_state_dict)
+
+                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Checkout"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            success = await send_response(
+                                from_number, response_message, "interactive_button",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Checkout started", status_code=200)
+
+                    elif node_name == "handle_size":
+                        current_state_dict.update(state_updates)
+                        result = await cart_nodes.handle_size_selection_node(current_state_dict)
+
+                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Size selected"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            msg_type = "interactive_button" if interactive_comp.get("type") == "button" else "interactive_list"
+                            success = await send_response(
+                                from_number, response_message, msg_type,
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Size selected", status_code=200)
+
+                    elif node_name == "handle_delivery_method":
+                        current_state_dict.update(state_updates)
+                        result = await cart_nodes.handle_delivery_method_node(current_state_dict)
+
+                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Delivery selected"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            msg_type = "interactive_list"
+                            success = await send_response(
+                                from_number, response_message, msg_type,
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Delivery method selected", status_code=200)
+
+                    elif node_name == "handle_payment_method":
+                        current_state_dict.update(state_updates)
+                        result = await cart_nodes.handle_payment_method_node(current_state_dict)
+
+                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Payment selected"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            success = await send_response(
+                                from_number, response_message, "interactive",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Payment method selected", status_code=200)
+
+                    else:
+                        # Not a cart interaction or fallback to conversation
+                        # Use text representation for conversation flow
+                        content = text_repr
+
+                        # Continue with normal graph processing below...
+                        await graph.ainvoke(
+                            {"messages": [HumanMessage(content=content)]},
+                            {"configurable": {"thread_id": session_id}},
+                        )
+
+                        # Get the workflow type and response from the state
+                        output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+
+                        workflow = output_state.values.get("workflow", "conversation")
+                        response_message = output_state.values["messages"][-1].content
+                        use_interactive_menu = output_state.values.get("use_interactive_menu", False)
+
             else:
                 content = message["text"]["body"]
 
-            # Process message through the graph agent
-            # Use business subdomain + user number as session ID for multi-tenancy
-            session_id = f"{business_subdomain}:{from_number}"
+                # Process message through the graph agent
+                # Use business subdomain + user number as session ID for multi-tenancy
+                session_id = f"{business_subdomain}:{from_number}"
 
-            async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
-                graph = graph_builder.compile(checkpointer=short_term_memory)
-                await graph.ainvoke(
-                    {"messages": [HumanMessage(content=content)]},
-                    {"configurable": {"thread_id": session_id}},
-                )
+                async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+                    graph = graph_builder.compile(checkpointer=short_term_memory)
+                    await graph.ainvoke(
+                        {"messages": [HumanMessage(content=content)]},
+                        {"configurable": {"thread_id": session_id}},
+                    )
 
-                # Get the workflow type and response from the state
-                output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+                    # Get the workflow type and response from the state
+                    output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
 
-            workflow = output_state.values.get("workflow", "conversation")
-            response_message = output_state.values["messages"][-1].content
-            use_interactive_menu = output_state.values.get("use_interactive_menu", False)
+                workflow = output_state.values.get("workflow", "conversation")
+                response_message = output_state.values["messages"][-1].content
+                use_interactive_menu = output_state.values.get("use_interactive_menu", False)
 
             # Handle different response types based on workflow
             # Pass business credentials to send_response
