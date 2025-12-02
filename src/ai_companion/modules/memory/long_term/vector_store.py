@@ -131,11 +131,11 @@ class VectorStore:
             return []
 
         query_embedding = self.model.encode(query)
-        results = self.client.search(
+        results = self.client.query_points(
             collection_name=self.COLLECTION_NAME,
-            query_vector=query_embedding.tolist(),
+            query=query_embedding.tolist(),
             limit=k,
-        )
+        ).points
 
         return [
             Memory(
