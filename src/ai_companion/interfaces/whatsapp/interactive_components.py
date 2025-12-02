@@ -213,3 +213,292 @@ def create_quick_actions_buttons() -> Dict:
         ],
         header_text="Quick Actions"
     )
+
+
+def create_item_added_buttons(item_name: str, cart_total: float, item_count: int) -> Dict:
+    """Create buttons after adding item to cart.
+
+    Args:
+        item_name: Name of item that was added
+        cart_total: Current cart total
+        item_count: Number of items in cart
+
+    Returns:
+        Interactive button component
+    """
+    return create_button_component(
+        f"Added {item_name} to your cart!",
+        [
+            {"id": "continue_shopping", "title": "➕ Add More"},
+            {"id": "view_cart", "title": "🛒 View Cart"},
+            {"id": "checkout", "title": "✅ Checkout"}
+        ],
+        footer_text=f"{item_count} items • ${cart_total:.2f}"
+    )
+
+
+def create_cart_view_buttons(cart_total: float, item_count: int) -> Dict:
+    """Create buttons for cart view.
+
+    Args:
+        cart_total: Current cart total
+        item_count: Number of items in cart
+
+    Returns:
+        Interactive button component
+    """
+    return create_button_component(
+        f"Your cart has {item_count} item{'s' if item_count != 1 else ''}",
+        [
+            {"id": "checkout", "title": "✅ Checkout"},
+            {"id": "continue_shopping", "title": "➕ Add More"},
+            {"id": "clear_cart", "title": "🗑️ Clear Cart"}
+        ],
+        header_text=f"Cart Total: ${cart_total:.2f}"
+    )
+
+
+def create_size_selection_buttons(item_name: str, base_price: float) -> Dict:
+    """Create size selection buttons for menu items.
+
+    Args:
+        item_name: Name of the menu item
+        base_price: Base price (medium size)
+
+    Returns:
+        Interactive button component
+    """
+    small_price = base_price * 0.8
+    large_price = base_price * 1.3
+
+    return create_button_component(
+        "Choose your size:",
+        [
+            {"id": "size_small", "title": f"Small ${small_price:.2f}"},
+            {"id": "size_medium", "title": f"Medium ${base_price:.2f}"},
+            {"id": "size_large", "title": f"Large ${large_price:.2f}"}
+        ],
+        header_text=item_name
+    )
+
+
+def create_extras_list(category: str = "pizza") -> Dict:
+    """Create list of extras/toppings for customization.
+
+    Args:
+        category: Menu item category (pizza, burger, etc.)
+
+    Returns:
+        Interactive list component
+    """
+    if category == "pizza":
+        sections = [
+            {
+                "title": "🧀 Cheese & Protein",
+                "rows": [
+                    {"id": "extra_cheese", "title": "Extra Cheese", "description": "+$2.00"},
+                    {"id": "pepperoni", "title": "Pepperoni", "description": "+$2.50"},
+                    {"id": "chicken", "title": "Grilled Chicken", "description": "+$3.00"},
+                    {"id": "bacon", "title": "Bacon", "description": "+$2.50"}
+                ]
+            },
+            {
+                "title": "🥬 Veggies",
+                "rows": [
+                    {"id": "mushrooms", "title": "Mushrooms", "description": "+$1.50"},
+                    {"id": "olives", "title": "Black Olives", "description": "+$1.00"},
+                    {"id": "extra_toppings", "title": "Mixed Veggies", "description": "+$1.50"}
+                ]
+            },
+            {
+                "title": "🌟 Special Options",
+                "rows": [
+                    {"id": "gluten_free", "title": "Gluten-Free Crust", "description": "+$3.00"},
+                    {"id": "vegan_cheese", "title": "Vegan Cheese", "description": "+$2.50"},
+                    {"id": "extra_sauce", "title": "Extra Sauce", "description": "Free"}
+                ]
+            }
+        ]
+    elif category == "burger":
+        sections = [
+            {
+                "title": "🧀 Add-ons",
+                "rows": [
+                    {"id": "extra_cheese", "title": "Extra Cheese", "description": "+$2.00"},
+                    {"id": "bacon", "title": "Bacon", "description": "+$2.50"},
+                    {"id": "mushrooms", "title": "Sautéed Mushrooms", "description": "+$1.50"}
+                ]
+            }
+        ]
+    else:
+        sections = [
+            {
+                "title": "Extras",
+                "rows": [
+                    {"id": "extra_toppings", "title": "Extra Toppings", "description": "+$1.50"}
+                ]
+            }
+        ]
+
+    return create_list_component(
+        "Customize your order with extras:",
+        sections,
+        button_text="Add Extras",
+        footer_text="Tap to add, or skip to continue"
+    )
+
+
+def create_delivery_method_buttons() -> Dict:
+    """Create delivery method selection buttons.
+
+    Returns:
+        Interactive button component
+    """
+    return create_button_component(
+        "How would you like to receive your order?",
+        [
+            {"id": "delivery", "title": "🚗 Delivery"},
+            {"id": "pickup", "title": "🏃 Pickup"},
+            {"id": "dine_in", "title": "🍽️ Dine-In"}
+        ],
+        header_text="Delivery Method"
+    )
+
+
+def create_payment_method_list() -> Dict:
+    """Create payment method selection list.
+
+    Returns:
+        Interactive list component
+    """
+    sections = [
+        {
+            "title": "💳 Pay Now",
+            "rows": [
+                {"id": "credit_card", "title": "Credit Card", "description": "Visa, Mastercard, Amex"},
+                {"id": "debit_card", "title": "Debit Card", "description": "Bank debit card"},
+                {"id": "mobile_payment", "title": "Mobile Payment", "description": "Apple Pay, Google Pay"}
+            ]
+        },
+        {
+            "title": "💵 Pay Later",
+            "rows": [
+                {"id": "cash", "title": "Cash on Delivery", "description": "Pay when you receive"}
+            ]
+        }
+    ]
+
+    return create_list_component(
+        "Choose your payment method:",
+        sections,
+        button_text="Select Payment",
+        header_text="Payment"
+    )
+
+
+def create_order_details_message(order_data: Dict) -> Dict:
+    """Create WhatsApp order details interactive message for payment.
+
+    Args:
+        order_data: Order information dict with items, totals, etc.
+
+    Returns:
+        Interactive order_details component
+    """
+    # Format items for WhatsApp order format
+    items = []
+    for item in order_data.get("items", []):
+        items.append({
+            "retailer_id": item["menu_item_id"],
+            "name": item["name"],
+            "amount": {"value": int(item["base_price"] * 100), "offset": 100},
+            "quantity": item["quantity"],
+            "sale_amount": {"value": int(item["item_total"] * 100), "offset": 100}
+        })
+
+    subtotal = order_data.get("subtotal", 0.0)
+    tax = order_data.get("tax_amount", 0.0)
+    delivery_fee = order_data.get("delivery_fee", 0.0)
+    discount = order_data.get("discount", 0.0)
+    total = order_data.get("total", 0.0)
+
+    order_details = {
+        "status": "pending",
+        "items": items,
+        "subtotal": {"value": int(subtotal * 100), "offset": 100},
+        "tax": {
+            "value": int(tax * 100),
+            "offset": 100,
+            "description": f"Tax ({int(order_data.get('tax_rate', 0.08) * 100)}%)"
+        }
+    }
+
+    # Add delivery fee if applicable
+    if delivery_fee > 0:
+        order_details["shipping"] = {
+            "value": int(delivery_fee * 100),
+            "offset": 100,
+            "description": "Delivery fee"
+        }
+    else:
+        order_details["shipping"] = {
+            "value": 0,
+            "offset": 100,
+            "description": "Free delivery!"
+        }
+
+    # Add discount if applicable
+    if discount > 0:
+        order_details["discount"] = {
+            "value": int(discount * 100),
+            "offset": 100,
+            "description": order_data.get("discount_description", "Discount"),
+            "discount_program_name": order_data.get("discount_description", "Special Offer")
+        }
+
+    component = {
+        "type": "order_details",
+        "body": {"text": "Review your order and proceed to payment"},
+        "footer": {"text": f"Est. time: {order_data.get('estimated_time', '30-45 min')}"},
+        "action": {
+            "name": "review_and_pay",
+            "parameters": {
+                "reference_id": order_data.get("order_id", "unknown"),
+                "type": "digital-goods",
+                "payment_type": order_data.get("payment_type", "upi"),
+                "currency": "USD",
+                "total_amount": {"value": int(total * 100), "offset": 100},
+                "order": order_details,
+                "payment_configuration": order_data.get("payment_configuration", "restaurant-payment-config")
+            }
+        }
+    }
+
+    return component
+
+
+def create_order_status_message(order_id: str, status: str, message: str) -> Dict:
+    """Create order status tracking message.
+
+    Args:
+        order_id: Order reference ID
+        status: Order status (pending, processing, completed, etc.)
+        message: Status message to display
+
+    Returns:
+        Interactive order_status component
+    """
+    return {
+        "type": "order_status",
+        "body": {"text": message},
+        "action": {
+            "name": "review_order",
+            "parameters": {
+                "reference_id": order_id,
+                "order": {
+                    "status": status,
+                    "description": message
+                }
+            }
+        }
+    }

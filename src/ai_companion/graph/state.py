@@ -1,3 +1,4 @@
+from typing import Dict, List, Optional
 from langgraph.graph import MessagesState
 
 
@@ -15,6 +16,15 @@ class AICompanionState(MessagesState):
         memory_context (str): The context of the memories to be injected into the character card.
         use_interactive_menu (bool): Flag to send interactive menu component instead of plain text.
         interactive_component (dict): Structured data for WhatsApp interactive components.
+
+        # Shopping cart fields
+        shopping_cart (dict): Shopping cart data (serialized ShoppingCart)
+        order_stage (str): Current ordering stage (browsing, selecting, customizing, checkout, etc.)
+        current_item (dict): Item currently being customized
+        pending_customization (dict): Pending customization data (size, extras)
+        delivery_method (str): Chosen delivery method (delivery, pickup, dine_in)
+        payment_method (str): Chosen payment method
+        active_order_id (str): ID of the currently active order
     """
 
     summary: str
@@ -26,3 +36,12 @@ class AICompanionState(MessagesState):
     memory_context: str
     use_interactive_menu: bool
     interactive_component: dict
+
+    # Shopping cart state
+    shopping_cart: Optional[Dict]
+    order_stage: str
+    current_item: Optional[Dict]
+    pending_customization: Optional[Dict]
+    delivery_method: Optional[str]
+    payment_method: Optional[str]
+    active_order_id: Optional[str]
