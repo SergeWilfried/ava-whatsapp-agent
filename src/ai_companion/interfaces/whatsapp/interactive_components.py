@@ -63,7 +63,12 @@ def create_list_component(
     header_text: Optional[str] = None,
     footer_text: Optional[str] = None
 ) -> Dict:
-    """Create a list interactive component (up to 10 rows per section).
+    """Create a list interactive component.
+
+    IMPORTANT: WhatsApp limits list messages to:
+    - Up to 10 sections
+    - Up to 10 rows TOTAL across ALL sections combined
+    - Each row: title max 24 chars, description max 72 chars
 
     Args:
         body_text: Main message text (required, max 1024 chars)
@@ -107,16 +112,25 @@ def create_list_component(
     if footer_text:
         component["footer"] = {"text": footer_text[:60]}
 
-    # Format sections and rows
+    # Format sections and rows with TOTAL row limit of 10
     formatted_sections = []
+    total_rows = 0
+    max_total_rows = 10
+
     for section in sections[:10]:  # Max 10 sections
+        if total_rows >= max_total_rows:
+            break
+
+        section_rows = section.get("rows", [])
+        remaining_rows = max_total_rows - total_rows
+
         formatted_rows = [
             {
                 "id": row["id"],
                 "title": row["title"][:24],  # Max 24 chars
                 "description": row.get("description", "")[:72]  # Max 72 chars
             }
-            for row in section.get("rows", [])[:10]  # Max 10 rows per section
+            for row in section_rows[:remaining_rows]  # Limit to remaining quota
         ]
 
         if formatted_rows:
@@ -124,6 +138,7 @@ def create_list_component(
                 "title": section["title"][:24],
                 "rows": formatted_rows
             })
+            total_rows += len(formatted_rows)
 
     component["action"] = {
         "button": button_text[:20],
@@ -133,14 +148,22 @@ def create_list_component(
     return component
 
 
-def create_menu_list_from_restaurant_menu(restaurant_menu: Dict) -> Dict:
+def create_menu_list_from_restaurant_menu(restaurant_menu: Dict, max_items: int = 10) -> Dict:
     """Create a WhatsApp list component from restaurant menu data.
+
+    IMPORTANT: WhatsApp limits list messages to 10 rows total.
+    This function automatically limits items to fit within this constraint.
 
     Args:
         restaurant_menu: Restaurant menu dict with categories and items
+        max_items: Maximum total items to show (default 10, WhatsApp's limit)
 
     Returns:
-        Interactive list component
+        Interactive list component with up to 10 items total
+
+    Note:
+        For large menus, consider creating multiple list messages or
+        using category-specific menus (e.g., "View Pizzas", "View Burgers")
     """
     sections = []
 
@@ -153,16 +176,28 @@ def create_menu_list_from_restaurant_menu(restaurant_menu: Dict) -> Dict:
         "desserts": "🍰"
     }
 
+    total_items = 0
+
+    # Distribute items across categories, prioritizing first categories
     for category, items in restaurant_menu.items():
+        if total_items >= max_items:
+            break
+
         icon = category_icons.get(category, "•")
         rows = []
 
-        for idx, item in enumerate(items[:10]):  # Max 10 items per section
+        # Calculate how many items we can add from this category
+        remaining_slots = max_items - total_items
+        items_to_add = min(len(items), remaining_slots)
+
+        for idx in range(items_to_add):
+            item = items[idx]
             rows.append({
                 "id": f"{category}_{idx}",
-                "title": f"{icon} {item['name'][:20]}",
+                "title": f"{icon} {item['name'][:18]}",  # Leave room for emoji
                 "description": f"${item['price']:.2f} - {item['description'][:50]}"
             })
+            total_items += 1
 
         if rows:
             sections.append({
@@ -175,6 +210,81 @@ def create_menu_list_from_restaurant_menu(restaurant_menu: Dict) -> Dict:
         sections,
         button_text="View Menu",
         footer_text="Tap an item to add to your order"
+    )
+
+
+def create_category_menu_buttons(available_categories: List[str] = None) -> Dict:
+    """Create buttons for selecting menu categories.
+
+    Use this when the full menu has too many items (>10) to fit in one list.
+    Users can select a category, then see items from that category only.
+
+    Args:
+        available_categories: List of category names to show (default: all)
+
+    Returns:
+        Interactive button component
+
+    Example:
+        create_category_menu_buttons(["pizzas", "burgers", "sides"])
+    """
+    if available_categories is None:
+        available_categories = ["pizzas", "burgers", "sides"]
+
+    # Map categories to display names with emojis
+    category_display = {
+        "pizzas": "🍕 Pizzas",
+        "burgers": "🍔 Burgers",
+        "sides": "🍟 Sides",
+        "drinks": "🥤 Drinks",
+        "desserts": "🍰 Desserts"
+    }
+
+    buttons = [
+        {"id": f"category_{cat}", "title": category_display.get(cat, cat.title())}
+        for cat in available_categories[:3]  # Max 3 buttons
+    ]
+
+    return create_button_component(
+        "What would you like to browse?",
+        buttons,
+        header_text="Menu Categories"
+    )
+
+
+def create_category_specific_menu(category: str, items: List[Dict]) -> Dict:
+    """Create a menu list for a specific category.
+
+    Args:
+        category: Category name (e.g., "pizzas")
+        items: List of menu items in this category
+
+    Returns:
+        Interactive list component with up to 10 items from the category
+    """
+    category_icons = {
+        "pizzas": "🍕",
+        "burgers": "🍔",
+        "sides": "🍟",
+        "drinks": "🥤",
+        "desserts": "🍰"
+    }
+
+    icon = category_icons.get(category, "•")
+    rows = []
+
+    for idx, item in enumerate(items[:10]):  # Max 10 items
+        rows.append({
+            "id": f"{category}_{idx}",
+            "title": f"{icon} {item['name'][:18]}",
+            "description": f"${item['price']:.2f} - {item['description'][:50]}"
+        })
+
+    return create_list_component(
+        f"Choose from our {category.title()}:",
+        [{"title": category.title(), "rows": rows}],
+        button_text="Select Item",
+        footer_text="Tap to add to cart"
     )
 
 
