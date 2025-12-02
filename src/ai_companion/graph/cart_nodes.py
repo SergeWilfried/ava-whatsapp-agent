@@ -34,13 +34,12 @@ def get_or_create_cart(state: AICompanionState) -> ShoppingCart:
     cart_data = state.get("shopping_cart")
     if cart_data:
         # Reconstruct cart from serialized data
-        cart = ShoppingCart(
-            cart_id=cart_data["cart_id"],
-            items=[],  # Would need full deserialization
-        )
-        # For now, create new cart if data exists
-        # TODO: Implement full cart deserialization
-        return cart_service.create_cart()
+        try:
+            return ShoppingCart.from_dict(cart_data)
+        except Exception as e:
+            logger.error(f"Error deserializing cart: {e}")
+            # If deserialization fails, create new cart
+            return cart_service.create_cart()
     else:
         return cart_service.create_cart()
 

@@ -89,6 +89,28 @@ class CartItem:
             } if self.customization else None
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict) -> "CartItem":
+        """Create CartItem from dictionary."""
+        customization = None
+        if data.get("customization"):
+            cust_data = data["customization"]
+            customization = CartItemCustomization(
+                size=cust_data.get("size"),
+                extras=cust_data.get("extras", []),
+                special_instructions=cust_data.get("special_instructions"),
+                price_adjustment=cust_data.get("price_adjustment", 0.0)
+            )
+
+        return cls(
+            id=data["id"],
+            menu_item_id=data["menu_item_id"],
+            name=data["name"],
+            base_price=data["base_price"],
+            quantity=data["quantity"],
+            customization=customization
+        )
+
 
 @dataclass
 class ShoppingCart:
@@ -163,6 +185,18 @@ class ShoppingCart:
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat()
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "ShoppingCart":
+        """Create ShoppingCart from dictionary."""
+        from datetime import datetime
+
+        cart = cls(cart_id=data["cart_id"])
+        cart.items = [CartItem.from_dict(item_data) for item_data in data.get("items", [])]
+        cart.created_at = datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now()
+        cart.updated_at = datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else datetime.now()
+
+        return cart
 
 
 @dataclass
