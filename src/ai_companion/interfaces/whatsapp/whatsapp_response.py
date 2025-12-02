@@ -46,39 +46,37 @@ async def whatsapp_handler(request: Request) -> Response:
         if "messages" in change_value:
             message = change_value["messages"][0]
             from_number = message["from"]
-            session_id = from_number
 
-            if from_number == "709970042210245":
-                whatsapp_token = os.getenv("WHATSAPP_TOKEN")
-                phone_number_id = WHATSAPP_PHONE_NUMBER_ID
-                logger.info(f"Using unencrypted WHATSAPP_TOKEN from environment for phone: {from_number}")
-            else:
-                # Use environment variables for WhatsApp credentials
-                whatsapp_token = WHATSAPP_TOKEN
-                phone_number_id = WHATSAPP_PHONE_NUMBER_ID
-                           # Extract phone number ID from metadata (this is the business phone number ID)
+            # Extract phone number ID from metadata (this is the business phone number ID)
             phone_number_id = change_value.get("metadata", {}).get("phone_number_id")
 
             if not phone_number_id:
                 logger.error("No phone_number_id found in webhook metadata")
                 return Response(content="Missing phone_number_id in webhook", status_code=400)
 
-            # Lookup business credentials by phone number ID (using optimized service)
-            business_service = await get_optimized_business_service()
-            business = await business_service.get_business_by_phone_number_id(phone_number_id)
+            # Check if this is the special phone number ID that uses environment variables
+            if phone_number_id == "709970042210245":
+                whatsapp_token = WHATSAPP_TOKEN
+                business_name = "Default Business (Environment Variables)"
+                business_subdomain = "default"
+                logger.info(f"Using environment variables for phone_number_id: {phone_number_id}")
+            else:
+                # Lookup business credentials by phone number ID (using optimized service)
+                business_service = await get_optimized_business_service()
+                business = await business_service.get_business_by_phone_number_id(phone_number_id)
 
-            if not business:
-                logger.error(f"No business found for phone_number_id: {phone_number_id}")
-                return Response(content="Business not found for this phone number", status_code=404)
+                if not business:
+                    logger.error(f"No business found for phone_number_id: {phone_number_id}")
+                    return Response(content="Business not found for this phone number", status_code=404)
 
-            # Extract business-specific credentials
-            whatsapp_token = business.get("decryptedAccessToken")
-            business_name = business.get("name", "Unknown Business")
-            business_subdomain = business.get("subDomain", "unknown")
+                # Extract business-specific credentials
+                whatsapp_token = business.get("decryptedAccessToken")
+                business_name = business.get("name", "Unknown Business")
+                business_subdomain = business.get("subDomain", "unknown")
 
-            if not whatsapp_token:
-                logger.error(f"No valid WhatsApp token for business: {business_name}")
-                return Response(content="Invalid business credentials", status_code=500)
+                if not whatsapp_token:
+                    logger.error(f"No valid WhatsApp token for business: {business_name}")
+                    return Response(content="Invalid business credentials", status_code=500)
 
             logger.info(f"Processing message for business: {business_name} (subdomain: {business_subdomain})")
 
