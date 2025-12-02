@@ -259,6 +259,35 @@ async def whatsapp_handler(request: Request) -> Response:
 
                         return Response(content="Size selected", status_code=200)
 
+                    elif node_name == "handle_extras":
+                        current_state_dict.update(state_updates)
+                        result = await cart_nodes.handle_extras_selection_node(current_state_dict)
+
+                        # Persist state updates back to graph
+                        await graph.aupdate_state(
+                            config={"configurable": {"thread_id": session_id}},
+                            values=result
+                        )
+
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Extra added"
+                        interactive_comp = result.get("interactive_component")
+
+                        if interactive_comp:
+                            msg_type = "interactive_button" if interactive_comp.get("type") == "button" else "interactive_list"
+                            success = await send_response(
+                                from_number, response_message, msg_type,
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            success = await send_response(
+                                from_number, response_message, "text",
+                                phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Extra added", status_code=200)
+
                     elif node_name == "handle_delivery_method":
                         current_state_dict.update(state_updates)
                         result = await cart_nodes.handle_delivery_method_node(current_state_dict)
@@ -303,11 +332,14 @@ async def whatsapp_handler(request: Request) -> Response:
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
+                            logger.info(f"Sending order_details component: {interactive_comp.get('type')}")
                             success = await send_response(
                                 from_number, response_message, "interactive",
                                 phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
                                 interactive_component=interactive_comp
                             )
+                            if not success:
+                                logger.error("Failed to send order details interactive message")
                         else:
                             success = await send_response(
                                 from_number, response_message, "text",
@@ -542,6 +574,23 @@ async def send_response(
             }
         }
 
+    elif message_type == "interactive":
+        # For order_details and order_status types
+        if not interactive_component:
+            logger.error("Interactive component is missing for interactive message type")
+            return False
+
+        json_data = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": from_number,
+            "type": "interactive",
+            "interactive": interactive_component
+        }
+
+        logger.info(f"Sending interactive message of type: {interactive_component.get('type')}")
+        logger.debug(f"Interactive component data: {interactive_component}")
+
     else:  # Default to text
         json_data = {
             "messaging_product": "whatsapp",
@@ -560,7 +609,12 @@ async def send_response(
             json=json_data,
         )
 
-    return response.status_code == 200
+    if response.status_code != 200:
+        logger.error(f"WhatsApp API error: {response.status_code} - {response.text}")
+        return False
+
+    logger.info(f"Message sent successfully to {from_number}")
+    return True
 
 
 async def upload_media(
