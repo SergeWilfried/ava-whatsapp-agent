@@ -249,6 +249,11 @@ async def send_response(
     token = whatsapp_token or WHATSAPP_TOKEN
     phone_id = phone_number_id or WHATSAPP_PHONE_NUMBER_ID
 
+    # Validate token is not empty
+    if not token or not token.strip():
+        logger.error("WhatsApp token is missing or empty. Cannot send message.")
+        return False
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -345,6 +350,10 @@ async def upload_media(
     """Upload media to WhatsApp servers."""
     token = whatsapp_token or WHATSAPP_TOKEN
     phone_id = phone_number_id or WHATSAPP_PHONE_NUMBER_ID
+
+    # Validate token is not empty
+    if not token or not token.strip():
+        raise ValueError("WhatsApp token is missing or empty. Cannot upload media.")
 
     headers = {"Authorization": f"Bearer {token}"}
     files = {"file": ("response.mp3", media_content, mime_type)}
