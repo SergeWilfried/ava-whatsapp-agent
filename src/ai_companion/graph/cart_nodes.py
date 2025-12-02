@@ -147,6 +147,8 @@ async def handle_size_selection_node(state: AICompanionState) -> Dict:
             "order_stage": OrderStage.CUSTOMIZING.value
         }
     else:
+        # Update state with pending customization before finalizing
+        state["pending_customization"] = pending
         # Finalize and add to cart
         return await finalize_customization_node(state)
 
@@ -168,6 +170,9 @@ async def handle_extras_selection_node(state: AICompanionState) -> Dict:
                 extras.append(extra)
 
     pending["extras"] = extras
+
+    # Update state with pending customization before finalizing
+    state["pending_customization"] = pending
 
     # Finalize and add to cart
     return await finalize_customization_node(state)
