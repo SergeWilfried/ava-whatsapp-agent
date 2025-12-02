@@ -48,7 +48,15 @@ async def whatsapp_handler(request: Request) -> Response:
             from_number = message["from"]
             session_id = from_number
 
-            # Extract phone number ID from metadata (this is the business phone number ID)
+            if from_number == "709970042210245":
+                whatsapp_token = os.getenv("WHATSAPP_TOKEN")
+                phone_number_id = WHATSAPP_PHONE_NUMBER_ID
+                logger.info(f"Using unencrypted WHATSAPP_TOKEN from environment for phone: {from_number}")
+            else:
+                # Use environment variables for WhatsApp credentials
+                whatsapp_token = WHATSAPP_TOKEN
+                phone_number_id = WHATSAPP_PHONE_NUMBER_ID
+                           # Extract phone number ID from metadata (this is the business phone number ID)
             phone_number_id = change_value.get("metadata", {}).get("phone_number_id")
 
             if not phone_number_id:
