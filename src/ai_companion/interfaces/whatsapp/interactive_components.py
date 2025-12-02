@@ -509,86 +509,66 @@ def create_payment_method_list() -> Dict:
 def create_order_details_message(order_data: Dict) -> Dict:
     """Create WhatsApp order details interactive message for payment.
 
+    Note: WhatsApp Cloud API only supports 'button', 'list', 'product', and 'product_list' types.
+    The 'order_details' type is not supported, so we use buttons for order confirmation instead.
+
     Args:
         order_data: Order information dict with items, totals, etc.
 
     Returns:
-        Interactive order_details component
+        Interactive button component for order confirmation
     """
-    # Format items for WhatsApp order format
-    items = []
+    # Build order summary text
+    items_list = []
     for item in order_data.get("items", []):
-        items.append({
-            "retailer_id": item["menu_item_id"],
-            "name": item["name"],
-            "amount": {"value": int(item["base_price"] * 100), "offset": 100},
-            "quantity": item["quantity"],
-            "sale_amount": {"value": int(item["item_total"] * 100), "offset": 100}
-        })
+        size_text = f" ({item.get('size', 'medium')})" if item.get('size') else ""
+        extras_text = ""
+        if item.get('extras'):
+            extras_text = f" + {', '.join(item['extras'])}"
+        items_list.append(f"• {item['name']}{size_text}{extras_text} x{item['quantity']} - ${item['item_total']:.2f}")
+
+    items_text = "\n".join(items_list)
 
     subtotal = order_data.get("subtotal", 0.0)
     tax = order_data.get("tax_amount", 0.0)
     delivery_fee = order_data.get("delivery_fee", 0.0)
-    discount = order_data.get("discount", 0.0)
     total = order_data.get("total", 0.0)
 
-    order_details = {
-        "status": "pending",
-        "items": items,
-        "subtotal": {"value": int(subtotal * 100), "offset": 100},
-        "tax": {
-            "value": int(tax * 100),
-            "offset": 100,
-            "description": f"Tax ({int(order_data.get('tax_rate', 0.08) * 100)}%)"
-        }
-    }
+    payment_method = order_data.get("payment_method", "Cash on Delivery")
+    delivery_method = order_data.get("delivery_method", "Delivery")
 
-    # Add delivery fee if applicable
-    if delivery_fee > 0:
-        order_details["shipping"] = {
-            "value": int(delivery_fee * 100),
-            "offset": 100,
-            "description": "Delivery fee"
-        }
-    else:
-        order_details["shipping"] = {
-            "value": 0,
-            "offset": 100,
-            "description": "Free delivery!"
-        }
+    order_summary = f"""📦 Your Order:
 
-    # Add discount if applicable
-    if discount > 0:
-        order_details["discount"] = {
-            "value": int(discount * 100),
-            "offset": 100,
-            "description": order_data.get("discount_description", "Discount"),
-            "discount_program_name": order_data.get("discount_description", "Special Offer")
-        }
+{items_text}
 
-    component = {
-        "type": "order_details",
-        "body": {"text": "Review your order and proceed to payment"},
-        "footer": {"text": f"Est. time: {order_data.get('estimated_time', '30-45 min')}"},
-        "action": {
-            "name": "review_and_pay",
-            "parameters": {
-                "reference_id": order_data.get("order_id", "unknown"),
-                "type": "digital-goods",
-                "payment_type": order_data.get("payment_type", "upi"),
-                "currency": "USD",
-                "total_amount": {"value": int(total * 100), "offset": 100},
-                "order": order_details,
-                "payment_configuration": order_data.get("payment_configuration", "restaurant-payment-config")
-            }
-        }
-    }
+💰 Order Summary:
+Subtotal: ${subtotal:.2f}
+Tax: ${tax:.2f}
+Delivery: ${delivery_fee:.2f}
+─────────────
+Total: ${total:.2f}
 
-    return component
+🚚 {delivery_method}
+💳 {payment_method}"""
+
+    # Create confirmation buttons
+    return create_button_component(
+        order_summary,
+        [
+            {"id": "confirm_order", "title": "✅ Confirm Order"},
+            {"id": "edit_order", "title": "✏️ Edit"},
+            {"id": "cancel_order", "title": "❌ Cancel"}
+        ],
+        header_text=f"Order #{order_data.get('order_id', 'unknown')[:8]}",
+        footer_text=f"Est. time: {order_data.get('estimated_time', '30-45 min')}"
+    )
 
 
 def create_order_status_message(order_id: str, status: str, message: str) -> Dict:
     """Create order status tracking message.
+
+    Note: WhatsApp Cloud API only supports 'button', 'list', 'product', and 'product_list' types.
+    The 'order_status' type is not supported, so we use buttons for order tracking instead.
 
     Args:
         order_id: Order reference ID
@@ -596,19 +576,28 @@ def create_order_status_message(order_id: str, status: str, message: str) -> Dic
         message: Status message to display
 
     Returns:
-        Interactive order_status component
+        Interactive button component for order status
     """
-    return {
-        "type": "order_status",
-        "body": {"text": message},
-        "action": {
-            "name": "review_order",
-            "parameters": {
-                "reference_id": order_id,
-                "order": {
-                    "status": status,
-                    "description": message
-                }
-            }
-        }
+    status_emojis = {
+        "pending": "⏳",
+        "confirmed": "✅",
+        "preparing": "👨‍🍳",
+        "ready": "🎉",
+        "out_for_delivery": "🚗",
+        "delivered": "✅",
+        "completed": "✅",
+        "cancelled": "❌"
     }
+
+    emoji = status_emojis.get(status, "📦")
+
+    return create_button_component(
+        f"{emoji} {message}",
+        [
+            {"id": "track_order", "title": "📍 Track Order"},
+            {"id": "contact_support", "title": "💬 Contact Us"},
+            {"id": "new_order", "title": "🛒 New Order"}
+        ],
+        header_text=f"Order #{order_id[:8]}",
+        footer_text=f"Status: {status.replace('_', ' ').title()}"
+    )

@@ -332,14 +332,14 @@ async def whatsapp_handler(request: Request) -> Response:
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
-                            logger.info(f"Sending order_details component: {interactive_comp.get('type')}")
+                            logger.info(f"Sending order confirmation component: {interactive_comp.get('type')}")
                             success = await send_response(
-                                from_number, response_message, "interactive",
+                                from_number, response_message, "interactive_button",
                                 phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
                                 interactive_component=interactive_comp
                             )
                             if not success:
-                                logger.error("Failed to send order details interactive message")
+                                logger.error("Failed to send order confirmation interactive message")
                         else:
                             success = await send_response(
                                 from_number, response_message, "text",
