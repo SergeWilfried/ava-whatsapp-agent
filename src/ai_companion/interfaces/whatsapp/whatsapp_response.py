@@ -150,8 +150,9 @@ async def whatsapp_handler(request: Request) -> Response:
                         current_state_dict.update(state_updates)
                         result = await cart_nodes.add_to_cart_node(current_state_dict)
 
-                        # Send response
-                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Added to cart!"
+                        # Send response (messages is a single AIMessage object, not a list)
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Added to cart!"
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
@@ -172,7 +173,8 @@ async def whatsapp_handler(request: Request) -> Response:
                     elif node_name == "view_cart":
                         result = await cart_nodes.view_cart_node(current_state_dict)
 
-                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Your cart"
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Your cart"
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
@@ -192,7 +194,8 @@ async def whatsapp_handler(request: Request) -> Response:
                     elif node_name == "checkout":
                         result = await cart_nodes.checkout_node(current_state_dict)
 
-                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Checkout"
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Checkout"
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
@@ -213,7 +216,8 @@ async def whatsapp_handler(request: Request) -> Response:
                         current_state_dict.update(state_updates)
                         result = await cart_nodes.handle_size_selection_node(current_state_dict)
 
-                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Size selected"
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Size selected"
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
@@ -235,7 +239,8 @@ async def whatsapp_handler(request: Request) -> Response:
                         current_state_dict.update(state_updates)
                         result = await cart_nodes.handle_delivery_method_node(current_state_dict)
 
-                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Delivery selected"
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Delivery selected"
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
@@ -257,7 +262,8 @@ async def whatsapp_handler(request: Request) -> Response:
                         current_state_dict.update(state_updates)
                         result = await cart_nodes.handle_payment_method_node(current_state_dict)
 
-                        response_message = result.get("messages", [])[-1].content if result.get("messages") else "Payment selected"
+                        message_obj = result.get("messages")
+                        response_message = message_obj.content if message_obj else "Payment selected"
                         interactive_comp = result.get("interactive_component")
 
                         if interactive_comp:
