@@ -288,14 +288,10 @@ async def handle_delivery_method_node(state: AICompanionState) -> Dict:
     if "delivery" in last_message:
         delivery_method = DeliveryMethod.DELIVERY.value
 
-        # Check if user has already shared location
-        user_location = state.get("user_location")
-        if not user_location:
-            # Request location before proceeding to payment
-            logger.info("Delivery selected, requesting location")
-            return await request_delivery_location_node(state)
+        # ALWAYS request location for delivery orders (don't reuse old location)
+        logger.info("Delivery selected, requesting fresh location for this order")
+        return await request_delivery_location_node(state)
 
-        next_message = "Perfect! We'll deliver to your address."
     elif "pickup" in last_message:
         delivery_method = DeliveryMethod.PICKUP.value
         next_message = f"Great! You can pick up from {RESTAURANT_INFO['address']}"
@@ -305,16 +301,11 @@ async def handle_delivery_method_node(state: AICompanionState) -> Dict:
     else:
         delivery_method = DeliveryMethod.DELIVERY.value
 
-        # Check if user has already shared location
-        user_location = state.get("user_location")
-        if not user_location:
-            # Request location before proceeding to payment
-            logger.info("Delivery selected (default), requesting location")
-            return await request_delivery_location_node(state)
+        # ALWAYS request location for delivery orders (don't reuse old location)
+        logger.info("Delivery selected (default), requesting fresh location for this order")
+        return await request_delivery_location_node(state)
 
-        next_message = "We'll deliver to your address."
-
-    # Ask for payment method
+    # Ask for payment method (only for pickup/dine-in)
     interactive_comp = create_payment_method_list()
 
     return {
