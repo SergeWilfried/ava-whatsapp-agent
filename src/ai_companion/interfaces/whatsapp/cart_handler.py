@@ -60,6 +60,10 @@ class CartInteractionHandler:
         if interaction_id in CartInteractionHandler.CART_BUTTON_IDS.values():
             return True
 
+        # Check category selection pattern (e.g., "category_pizzas", "category_burgers")
+        if interaction_id.startswith("category_"):
+            return True
+
         # Check menu item pattern (e.g., "pizzas_0", "burgers_1")
         if "_" in interaction_id:
             parts = interaction_id.split("_")
@@ -71,6 +75,12 @@ class CartInteractionHandler:
                         return True
                     except ValueError:
                         pass
+
+        # Check add pattern for carousel follow-up buttons (e.g., "add_pizzas_0")
+        if interaction_id.startswith("add_"):
+            parts = interaction_id.split("_")
+            if len(parts) == 3:  # add_category_index
+                return True
 
         # Check extras pattern
         extras = ["extra_cheese", "mushrooms", "olives", "pepperoni", "bacon",
@@ -120,6 +130,22 @@ class CartInteractionHandler:
         Returns:
             Tuple of (node_name, state_updates)
         """
+        # Category selection -> show carousel
+        if interaction_id.startswith("category_"):
+            category = interaction_id.replace("category_", "")
+            return "view_category_carousel", {"selected_category": category}
+
+        # Add item from carousel follow-up buttons (e.g., "add_pizzas_0")
+        if interaction_id.startswith("add_"):
+            parts = interaction_id.split("_")
+            if len(parts) == 3:  # add_category_index
+                category, idx = parts[1], parts[2]
+                menu_item_id = f"{category}_{idx}"
+                return "add_to_cart", {
+                    "current_item": {"menu_item_id": menu_item_id},
+                    "order_stage": OrderStage.SELECTING.value
+                }
+
         # Menu item selection -> add to cart
         if "_" in interaction_id and any(
             interaction_id.startswith(cat) for cat in ["pizzas", "burgers", "sides", "drinks", "desserts"]
@@ -204,6 +230,15 @@ class CartInteractionHandler:
         Returns:
             Natural language representation
         """
+        # Category selection
+        if interaction_id.startswith("category_"):
+            category = interaction_id.replace("category_", "")
+            return f"Show me the {category}"
+
+        # Add item from carousel buttons
+        if interaction_id.startswith("add_"):
+            return f"I'd like to order the {title.replace('Add ', '')}"
+
         # Menu item selections
         if "_" in interaction_id and any(
             interaction_id.startswith(cat) for cat in ["pizzas", "burgers", "sides", "drinks", "desserts"]

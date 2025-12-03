@@ -564,6 +564,53 @@ Total: ${total:.2f}
     )
 
 
+def create_category_selection_list() -> Dict:
+    """Create interactive list for selecting menu categories.
+
+    Shows all menu categories with item counts for users to browse.
+
+    Returns:
+        Interactive list component for category selection
+
+    Example:
+        >>> component = create_category_selection_list()
+        >>> # Use in send_response with message_type="interactive_list"
+    """
+    from ai_companion.core.schedules import RESTAURANT_MENU
+
+    # Map categories to display info
+    category_info = {
+        "pizzas": {"emoji": "🍕", "name": "Pizzas"},
+        "burgers": {"emoji": "🍔", "name": "Burgers"},
+        "sides": {"emoji": "🍟", "name": "Sides"},
+        "drinks": {"emoji": "🥤", "name": "Drinks"},
+        "desserts": {"emoji": "🍰", "name": "Desserts"}
+    }
+
+    # Build rows from actual menu
+    rows = []
+    for category, items in RESTAURANT_MENU.items():
+        info = category_info.get(category, {"emoji": "•", "name": category.title()})
+        item_count = len(items)
+
+        rows.append({
+            "id": f"category_{category}",
+            "title": f"{info['emoji']} {info['name']}",
+            "description": f"{item_count} items available"
+        })
+
+    return create_list_component(
+        body_text="What would you like to browse? 😋",
+        sections=[{
+            "title": "Menu Categories",
+            "rows": rows
+        }],
+        button_text="Browse Menu",
+        header_text="Our Menu",
+        footer_text="Tap to see items"
+    )
+
+
 def create_order_status_message(order_id: str, status: str, message: str) -> Dict:
     """Create order status tracking message.
 

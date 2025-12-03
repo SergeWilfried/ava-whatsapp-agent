@@ -200,13 +200,16 @@ def create_product_carousel(
             card_body += f"\n${product['price']:.2f}"
 
         # Create card
+        # Support both product_url and order_url keys
+        url = product.get("product_url") or product.get("order_url", "https://example.com")
+
         card = create_carousel_card(
             card_index=idx,
             header_type=header_type,
             media_link=product["image_url"],
             body_text=card_body,
             button_display_text=button_text,
-            button_url=product["product_url"]
+            button_url=url
         )
         cards.append(card)
 

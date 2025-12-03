@@ -20,6 +20,14 @@ from ai_companion.graph import cart_nodes
 from ai_companion.interfaces.whatsapp.interactive_components import (
     create_menu_list_from_restaurant_menu,
     create_quick_actions_buttons,
+    create_button_component,
+    create_category_selection_list,
+)
+from ai_companion.interfaces.whatsapp.carousel_components import (
+    create_restaurant_menu_carousel,
+)
+from ai_companion.interfaces.whatsapp.image_utils import (
+    prepare_menu_items_for_carousel,
 )
 from ai_companion.core.schedules import RESTAURANT_MENU
 from ai_companion.modules.cart import OrderStage
@@ -158,17 +166,83 @@ async def whatsapp_handler(request: Request) -> Response:
                         return Response(content="Quick actions sent", status_code=200)
 
                     elif node_name == "view_menu":
-                        # User selected "View Menu" - show the actual menu
-                        interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
+                        # User selected "View Menu" - show category selection
+                        interactive_comp = create_category_selection_list()
                         success = await send_response(
                             from_number,
-                            "Here's our menu! 😋",
+                            "Browse our menu by category:",
                             "interactive_list",
                             phone_number_id=phone_number_id,
                             whatsapp_token=whatsapp_token,
                             interactive_component=interactive_comp
                         )
-                        return Response(content="Menu sent", status_code=200)
+                        return Response(content="Category list sent", status_code=200)
+
+                    elif node_name == "view_category_carousel":
+                        # User selected a category - show items as carousel with images
+                        category = state_updates.get("selected_category", "pizzas")
+
+                        if category in RESTAURANT_MENU:
+                            # Prepare items with automatic images
+                            menu_items = prepare_menu_items_for_carousel(
+                                RESTAURANT_MENU[category],
+                                category
+                            )
+
+                            # Create beautiful carousel with images
+                            carousel = create_restaurant_menu_carousel(
+                                menu_items,
+                                body_text=f"Check out our {category}! 😋 Swipe to browse",
+                                button_text="View"
+                            )
+
+                            # Send carousel
+                            success = await send_response(
+                                from_number,
+                                "",  # Body text is in carousel
+                                "interactive_carousel",
+                                phone_number_id=phone_number_id,
+                                whatsapp_token=whatsapp_token,
+                                interactive_component=carousel
+                            )
+
+                            # Update state with category
+                            await graph.aupdate_state(
+                                config={"configurable": {"thread_id": session_id}},
+                                values={"selected_category": category}
+                            )
+
+                            # Now send follow-up buttons for cart actions
+                            buttons = create_button_component(
+                                f"Which {category.rstrip('s')} would you like to add to your cart?",
+                                [
+                                    {"id": f"add_{category}_0", "title": f"Add {menu_items[0]['name'][:15]}"} if len(menu_items) > 0 else {"id": "back", "title": "Back"},
+                                    {"id": f"add_{category}_1", "title": f"Add {menu_items[1]['name'][:15]}"} if len(menu_items) > 1 else {"id": "view_cart", "title": "View Cart"},
+                                    {"id": "view_cart", "title": "🛒 View Cart"}
+                                ][:3]  # Max 3 buttons
+                            )
+
+                            # Send action buttons after a brief moment
+                            await send_response(
+                                from_number,
+                                "Select an item to add to your cart:",
+                                "interactive_button",
+                                phone_number_id=phone_number_id,
+                                whatsapp_token=whatsapp_token,
+                                interactive_component=buttons
+                            )
+
+                            return Response(content="Category carousel sent", status_code=200)
+                        else:
+                            # Category not found, send error
+                            await send_response(
+                                from_number,
+                                "Sorry, that category is not available.",
+                                "text",
+                                phone_number_id=phone_number_id,
+                                whatsapp_token=whatsapp_token
+                            )
+                            return Response(content="Invalid category", status_code=200)
 
                     elif node_name == "add_to_cart":
                         # Update state with selected item
