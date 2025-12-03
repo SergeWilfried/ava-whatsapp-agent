@@ -22,6 +22,7 @@ from ai_companion.interfaces.whatsapp.interactive_components import (
     create_quick_actions_buttons,
 )
 from ai_companion.core.schedules import RESTAURANT_MENU
+from ai_companion.modules.cart import OrderStage
 
 logger = logging.getLogger(__name__)
 
