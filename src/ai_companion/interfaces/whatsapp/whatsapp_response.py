@@ -695,11 +695,12 @@ async def send_response(
     Args:
         from_number: Recipient's phone number
         response_text: Message text or header text for interactive messages
-        message_type: One of "text", "audio", "image", "interactive_button", "interactive_list", "location", "location_request"
+        message_type: One of "text", "audio", "image", "interactive_button", "interactive_list",
+                     "interactive_carousel", "location", "location_request"
         media_content: Binary content for audio/image
         phone_number_id: WhatsApp Business phone number ID
         whatsapp_token: WhatsApp API access token
-        interactive_component: Structured data for interactive messages
+        interactive_component: Structured data for interactive messages (buttons, lists, carousels)
         latitude: Latitude for location messages (required for message_type="location")
         longitude: Longitude for location messages (required for message_type="location")
         location_name: Optional name for location messages
@@ -834,6 +835,26 @@ async def send_response(
         }
 
         logger.info(f"Sending location request to {from_number}")
+
+    elif message_type == "interactive_carousel":
+        # Send carousel message with horizontally scrollable cards
+        if not interactive_component:
+            logger.error("Interactive component is missing for carousel message type")
+            return False
+
+        if interactive_component.get("type") != "carousel":
+            logger.error(f"Expected carousel component, got {interactive_component.get('type')}")
+            return False
+
+        json_data = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": from_number,
+            "type": "interactive",
+            "interactive": interactive_component
+        }
+
+        logger.info(f"Sending carousel message to {from_number} with {len(interactive_component.get('action', {}).get('cards', []))} cards")
 
     else:  # Default to text
         json_data = {
