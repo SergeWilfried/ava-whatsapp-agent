@@ -622,8 +622,8 @@ async def whatsapp_handler(request: Request) -> Response:
                     phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
                 )
             elif use_interactive_menu:
-                # Send interactive menu list
-                interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
+                # Send category selection list (new flow)
+                interactive_comp = create_category_selection_list()
                 success = await send_response(
                     from_number, response_message, "interactive_list",
                     phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,

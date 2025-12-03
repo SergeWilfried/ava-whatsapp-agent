@@ -21,6 +21,7 @@ from ai_companion.interfaces.whatsapp.interactive_components import (
     create_order_details_message,
     create_order_status_message,
     create_menu_list_from_restaurant_menu,
+    create_category_selection_list,
 )
 from ai_companion.core.schedules import RESTAURANT_MENU, RESTAURANT_INFO
 
@@ -225,8 +226,8 @@ async def view_cart_node(state: AICompanionState) -> Dict:
     cart_service = CartService()
 
     if cart.is_empty:
-        # Show menu instead
-        interactive_comp = create_menu_list_from_restaurant_menu(RESTAURANT_MENU)
+        # Show category selection instead (new flow)
+        interactive_comp = create_category_selection_list()
         return {
             "messages": AIMessage(content="Your cart is empty. Let's browse the menu!"),
             "interactive_component": interactive_comp,
