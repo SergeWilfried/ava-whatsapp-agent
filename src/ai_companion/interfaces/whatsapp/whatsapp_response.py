@@ -89,6 +89,16 @@ async def whatsapp_handler(request: Request) -> Response:
 
             logger.info(f"Processing message for business: {business_name} (subdomain: {business_subdomain})")
 
+            # Mark message as read and show typing indicator
+            # This provides good UX while we process the message
+            message_id = message.get("id")
+            if message_id:
+                await mark_message_read_and_show_typing(
+                    message_id=message_id,
+                    phone_number_id=phone_number_id,
+                    whatsapp_token=whatsapp_token
+                )
+
             # Get user message and handle different message types
             content = ""
             if message["type"] == "audio":
@@ -582,6 +592,63 @@ async def download_media(media_id: str, whatsapp_token: Optional[str] = None) ->
         media_response = await client.get(download_url, headers=headers)
         media_response.raise_for_status()
         return media_response.content
+
+
+async def mark_message_read_and_show_typing(
+    message_id: str,
+    phone_number_id: str,
+    whatsapp_token: str
+) -> bool:
+    """
+    Mark a message as read and display typing indicator to the user.
+
+    The typing indicator will be dismissed once you respond, or after 25 seconds,
+    whichever comes first. This is good practice if it will take a few seconds to respond.
+
+    Args:
+        message_id: WhatsApp message ID from the webhook
+        phone_number_id: WhatsApp Business phone number ID
+        whatsapp_token: WhatsApp API access token
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not whatsapp_token or not whatsapp_token.strip():
+        logger.error("WhatsApp token is missing or empty. Cannot mark message as read.")
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {whatsapp_token}",
+        "Content-Type": "application/json",
+    }
+
+    json_data = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id,
+        "typing_indicator": {
+            "type": "text"
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"https://graph.facebook.com/v21.0/{phone_number_id}/messages",
+                headers=headers,
+                json=json_data,
+            )
+
+        if response.status_code == 200:
+            logger.info(f"Marked message {message_id} as read with typing indicator")
+            return True
+        else:
+            logger.warning(f"Failed to mark message as read: {response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error marking message as read: {e}", exc_info=True)
+        return False
 
 
 async def process_audio_message(message: Dict, whatsapp_token: Optional[str] = None) -> str:
