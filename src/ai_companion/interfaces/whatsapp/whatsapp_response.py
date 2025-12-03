@@ -662,13 +662,52 @@ async def whatsapp_handler(request: Request) -> Response:
                                 values=state_updates
                             )
 
-                            # Invoke the add_to_cart node
+                            # Invoke the add_to_cart node to process the item
                             await graph.ainvoke(
-                                None,
+                                {"messages": [HumanMessage(content=text_repr)]},
                                 {"configurable": {"thread_id": session_id}},
                             )
 
-                            return Response(content="Item added from deep link", status_code=200)
+                            # Get the response from the cart flow
+                            output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+
+                            # Extract response message and interactive component
+                            if output_state and output_state.values:
+                                response_message = output_state.values["messages"][-1].content
+                                interactive_comp = output_state.values.get("interactive_component")
+
+                                # Send the response to user
+                                if interactive_comp:
+                                    # Send message with interactive component
+                                    await send_response(
+                                        from_number,
+                                        response_message,
+                                        "interactive_button",
+                                        phone_number_id=phone_number_id,
+                                        whatsapp_token=whatsapp_token,
+                                        interactive_component=interactive_comp
+                                    )
+                                else:
+                                    # Send text message
+                                    await send_response(
+                                        from_number,
+                                        response_message,
+                                        "text",
+                                        phone_number_id=phone_number_id,
+                                        whatsapp_token=whatsapp_token
+                                    )
+
+                                return Response(content="Item added from deep link", status_code=200)
+                            else:
+                                # Fallback if no state
+                                await send_response(
+                                    from_number,
+                                    "Item added to cart! 🛒",
+                                    "text",
+                                    phone_number_id=phone_number_id,
+                                    whatsapp_token=whatsapp_token
+                                )
+                                return Response(content="Item added (fallback)", status_code=200)
 
                         # For other cart nodes, fall through to normal handling
                         # This shouldn't happen with deep links, but just in case
