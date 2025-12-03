@@ -25,6 +25,10 @@ class AICompanionState(MessagesState):
         delivery_method (str): Chosen delivery method (delivery, pickup, dine_in)
         payment_method (str): Chosen payment method
         active_order_id (str): ID of the currently active order
+
+        # Location fields
+        user_location (dict): User's shared location with latitude, longitude, address, name
+        awaiting_location (bool): Flag indicating system is waiting for user to share location
     """
 
     summary: str
@@ -45,3 +49,7 @@ class AICompanionState(MessagesState):
     delivery_method: Optional[str]
     payment_method: Optional[str]
     active_order_id: Optional[str]
+
+    # Location state
+    user_location: Optional[Dict]
+    awaiting_location: bool

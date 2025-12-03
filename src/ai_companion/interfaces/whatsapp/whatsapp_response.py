@@ -407,6 +407,98 @@ async def whatsapp_handler(request: Request) -> Response:
                         response_message = output_state.values["messages"][-1].content
                         use_interactive_menu = output_state.values.get("use_interactive_menu", False)
 
+            elif message["type"] == "location":
+                # User shared their location
+                from .location_components import format_location_for_display
+                from ai_companion.interfaces.whatsapp.interactive_components import create_payment_method_list
+
+                location_data = message.get("location", {})
+                latitude = location_data.get("latitude")
+                longitude = location_data.get("longitude")
+                address = location_data.get("address", "")
+                name = location_data.get("name", "")
+
+                logger.info(f"Received location from {from_number}: lat={latitude}, long={longitude}, name={name}")
+
+                # Store location in state for cart/delivery processing
+                session_id = f"{business_subdomain}:{from_number}"
+
+                async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+                    graph = graph_builder.compile(checkpointer=short_term_memory)
+
+                    # Get current state to check order stage
+                    output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+                    current_state_dict = dict(output_state.values) if output_state and output_state.values else {}
+                    order_stage = current_state_dict.get("order_stage", "")
+
+                    # Update state with location data
+                    await graph.aupdate_state(
+                        config={"configurable": {"thread_id": session_id}},
+                        values={
+                            "user_location": {
+                                "latitude": latitude,
+                                "longitude": longitude,
+                                "address": address,
+                                "name": name
+                            },
+                            "awaiting_location": False
+                        }
+                    )
+
+                    # If in checkout flow waiting for location, proceed to payment
+                    if order_stage == OrderStage.AWAITING_LOCATION.value:
+                        logger.info("Location received during checkout, proceeding to payment")
+
+                        # Format location for confirmation message
+                        location_display = format_location_for_display(
+                            latitude=latitude,
+                            longitude=longitude,
+                            name=name,
+                            address=address
+                        )
+
+                        # Ask for payment method
+                        interactive_comp = create_payment_method_list()
+
+                        success = await send_response(
+                            from_number,
+                            f"Great! We'll deliver to: {location_display}\n\nHow would you like to pay?",
+                            "interactive_list",
+                            phone_number_id=phone_number_id,
+                            whatsapp_token=whatsapp_token,
+                            interactive_component=interactive_comp
+                        )
+
+                        # Update order stage to payment
+                        await graph.aupdate_state(
+                            config={"configurable": {"thread_id": session_id}},
+                            values={"order_stage": OrderStage.PAYMENT.value}
+                        )
+
+                        return Response(content="Location received, payment requested", status_code=200)
+                    else:
+                        # Not in checkout flow, process normally through conversation
+                        location_display = format_location_for_display(
+                            latitude=latitude,
+                            longitude=longitude,
+                            name=name,
+                            address=address
+                        )
+                        content = f"[User shared location: {location_display}]"
+
+                        # Process location through the graph
+                        await graph.ainvoke(
+                            {"messages": [HumanMessage(content=content)]},
+                            {"configurable": {"thread_id": session_id}},
+                        )
+
+                        # Get response
+                        output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+
+                workflow = output_state.values.get("workflow", "conversation")
+                response_message = output_state.values["messages"][-1].content
+                use_interactive_menu = output_state.values.get("use_interactive_menu", False)
+
             else:
                 content = message["text"]["body"]
 
@@ -525,17 +617,25 @@ async def send_response(
     phone_number_id: Optional[str] = None,
     whatsapp_token: Optional[str] = None,
     interactive_component: Optional[Dict] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    location_name: Optional[str] = None,
+    location_address: Optional[str] = None,
 ) -> bool:
     """Send response to user via WhatsApp API.
 
     Args:
         from_number: Recipient's phone number
         response_text: Message text or header text for interactive messages
-        message_type: One of "text", "audio", "image", "interactive_button", "interactive_list"
+        message_type: One of "text", "audio", "image", "interactive_button", "interactive_list", "location", "location_request"
         media_content: Binary content for audio/image
         phone_number_id: WhatsApp Business phone number ID
         whatsapp_token: WhatsApp API access token
         interactive_component: Structured data for interactive messages
+        latitude: Latitude for location messages (required for message_type="location")
+        longitude: Longitude for location messages (required for message_type="location")
+        location_name: Optional name for location messages
+        location_address: Optional address for location messages
     """
     # Use business-specific credentials or fallback to env vars
     token = whatsapp_token or WHATSAPP_TOKEN
@@ -628,6 +728,44 @@ async def send_response(
 
         logger.info(f"Sending interactive message of type: {interactive_component.get('type')}")
         logger.debug(f"Interactive component data: {interactive_component}")
+
+    elif message_type == "location":
+        # Send a location message with coordinates
+        from .location_components import create_location_message_payload
+
+        if latitude is None or longitude is None:
+            logger.error("Latitude and longitude are required for location messages")
+            return False
+
+        json_data = {
+            "messaging_product": "whatsapp",
+            "to": from_number,
+            "type": "location",
+            "location": create_location_message_payload(
+                latitude=latitude,
+                longitude=longitude,
+                name=location_name,
+                address=location_address
+            )
+        }
+
+        logger.info(f"Sending location message to {from_number}: ({latitude}, {longitude})")
+
+    elif message_type == "location_request":
+        # Request user's location using interactive message
+        from .location_components import create_location_request_component
+
+        json_data = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": from_number,
+            "type": "interactive",
+            "interactive": create_location_request_component(
+                body_text=response_text or "Please share your location"
+            )
+        }
+
+        logger.info(f"Sending location request to {from_number}")
 
     else:  # Default to text
         json_data = {

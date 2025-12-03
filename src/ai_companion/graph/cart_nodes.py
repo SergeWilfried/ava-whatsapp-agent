@@ -287,6 +287,14 @@ async def handle_delivery_method_node(state: AICompanionState) -> Dict:
     # Parse delivery method
     if "delivery" in last_message:
         delivery_method = DeliveryMethod.DELIVERY.value
+
+        # Check if user has already shared location
+        user_location = state.get("user_location")
+        if not user_location:
+            # Request location before proceeding to payment
+            logger.info("Delivery selected, requesting location")
+            return await request_delivery_location_node(state)
+
         next_message = "Perfect! We'll deliver to your address."
     elif "pickup" in last_message:
         delivery_method = DeliveryMethod.PICKUP.value
@@ -296,6 +304,14 @@ async def handle_delivery_method_node(state: AICompanionState) -> Dict:
         next_message = "Wonderful! We'll have your table ready."
     else:
         delivery_method = DeliveryMethod.DELIVERY.value
+
+        # Check if user has already shared location
+        user_location = state.get("user_location")
+        if not user_location:
+            # Request location before proceeding to payment
+            logger.info("Delivery selected (default), requesting location")
+            return await request_delivery_location_node(state)
+
         next_message = "We'll deliver to your address."
 
     # Ask for payment method
@@ -397,4 +413,33 @@ async def confirm_order_node(state: AICompanionState) -> Dict:
         "shopping_cart": cart.to_dict(),
         "order_stage": OrderStage.CONFIRMED.value,
         "active_order_id": order.order_id
+    }
+
+
+async def request_delivery_location_node(state: AICompanionState) -> Dict:
+    """Request user's delivery location during checkout.
+
+    This node is triggered when the user selects delivery as the delivery method
+    and needs to provide their location for delivery.
+
+    Returns:
+        Dict: State updates with location request message and interactive component
+    """
+    from ai_companion.interfaces.whatsapp.location_components import create_location_request_component
+
+    logger.info("Requesting delivery location from user")
+
+    # Create location request interactive component
+    interactive_comp = create_location_request_component(
+        body_text="📍 Please share your delivery location so we can confirm delivery to your area.\n\n"
+                  "You can either:\n"
+                  "• Share your current location\n"
+                  "• Enter an address manually"
+    )
+
+    return {
+        "messages": AIMessage(content="location_request"),
+        "interactive_component": interactive_comp,
+        "awaiting_location": True,
+        "order_stage": OrderStage.AWAITING_LOCATION.value
     }
