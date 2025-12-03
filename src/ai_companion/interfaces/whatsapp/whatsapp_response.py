@@ -183,10 +183,12 @@ async def whatsapp_handler(request: Request) -> Response:
                         category = state_updates.get("selected_category", "pizzas")
 
                         if category in RESTAURANT_MENU:
-                            # Prepare items with automatic images
+                            # Prepare items with automatic images and WhatsApp deep links
                             menu_items = prepare_menu_items_for_carousel(
                                 RESTAURANT_MENU[category],
-                                category
+                                category,
+                                whatsapp_number=phone_number_id,  # Use phone_number_id for deep links
+                                use_whatsapp_deep_link=True  # Enable deep links
                             )
 
                             # Create beautiful carousel with images
@@ -587,7 +589,89 @@ async def whatsapp_handler(request: Request) -> Response:
             else:
                 content = message["text"]["body"]
 
-                # Process message through the graph agent
+                # Check if this is a cart action from WhatsApp deep link (e.g., "add_pizzas_0")
+                # This allows carousel buttons to directly trigger cart actions
+                from ai_companion.interfaces.whatsapp.cart_handler import CartInteractionHandler
+
+                if CartInteractionHandler.is_cart_interaction(content):
+                    # Treat text message as if it were an interactive button
+                    logger.info(f"Detected cart action from deep link: {content}")
+
+                    # Use business subdomain + user number as session ID
+                    session_id = f"{business_subdomain}:{from_number}"
+
+                    async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
+                        graph = graph_builder.compile(checkpointer=short_term_memory)
+
+                        # Get current state
+                        output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+                        current_state_dict = dict(output_state.values) if output_state and output_state.values else {}
+
+                        # Process as cart interaction (simulate interactive button)
+                        node_name, state_updates, text_repr = process_cart_interaction(
+                            "button_reply",  # Treat as button reply
+                            {"button_reply": {"id": content, "title": content}},
+                            current_state_dict
+                        )
+
+                        # Handle the cart node response
+                        if node_name == "view_category_carousel":
+                            # User selected a category via deep link - show items as carousel
+                            category = state_updates.get("selected_category", "pizzas")
+
+                            if category in RESTAURANT_MENU:
+                                # Prepare items with automatic images and WhatsApp deep links
+                                menu_items = prepare_menu_items_for_carousel(
+                                    RESTAURANT_MENU[category],
+                                    category,
+                                    whatsapp_number=phone_number_id,
+                                    use_whatsapp_deep_link=True
+                                )
+
+                                # Create carousel
+                                carousel = create_restaurant_menu_carousel(
+                                    menu_items,
+                                    body_text=f"Check out our {category}! 😋 Swipe to browse",
+                                    button_text="View"
+                                )
+
+                                # Send carousel
+                                await send_response(
+                                    from_number,
+                                    "",
+                                    "interactive_carousel",
+                                    phone_number_id=phone_number_id,
+                                    whatsapp_token=whatsapp_token,
+                                    interactive_component=carousel
+                                )
+
+                                # Update state
+                                await graph.aupdate_state(
+                                    config={"configurable": {"thread_id": session_id}},
+                                    values={"selected_category": category}
+                                )
+
+                                return Response(content="Category carousel sent from deep link", status_code=200)
+
+                        elif node_name == "add_to_cart":
+                            # Item added to cart from deep link - update state and trigger cart flow
+                            await graph.aupdate_state(
+                                config={"configurable": {"thread_id": session_id}},
+                                values=state_updates
+                            )
+
+                            # Invoke the add_to_cart node
+                            await graph.ainvoke(
+                                None,
+                                {"configurable": {"thread_id": session_id}},
+                            )
+
+                            return Response(content="Item added from deep link", status_code=200)
+
+                        # For other cart nodes, fall through to normal handling
+                        # This shouldn't happen with deep links, but just in case
+
+                # Normal text message - process through conversation graph
                 # Use business subdomain + user number as session ID for multi-tenancy
                 session_id = f"{business_subdomain}:{from_number}"
 

@@ -102,39 +102,39 @@ def get_menu_item_image_url(
 def prepare_menu_items_for_carousel(
     menu_items: list[Dict],
     category: str,
-    base_order_url: str = "https://yourshop.com/order"
+    base_order_url: str = "https://yourshop.com/order",
+    whatsapp_number: str = None,
+    use_whatsapp_deep_link: bool = True
 ) -> list[Dict]:
     """
     Prepare menu items with image URLs and order URLs for carousel.
 
     Takes raw menu items from RESTAURANT_MENU and enriches them with:
     - Image URLs (using intelligent fallback)
-    - Order URLs (generated from item names)
+    - Order URLs (WhatsApp deep links or regular URLs)
 
     Args:
         menu_items: List of menu item dicts with name, price, description
         category: Category name (e.g., "pizzas", "burgers")
-        base_order_url: Base URL for order links
+        base_order_url: Base URL for order links (ignored if use_whatsapp_deep_link=True)
+        whatsapp_number: WhatsApp bot number (e.g., "15551234567")
+        use_whatsapp_deep_link: If True, uses wa.me deep links that send messages back to bot
 
     Returns:
         list[Dict]: Menu items ready for carousel with image_url and order_url
 
     Example:
-        >>> from ai_companion.core.schedules import RESTAURANT_MENU
         >>> items = prepare_menu_items_for_carousel(
         ...     RESTAURANT_MENU["pizzas"],
-        ...     "pizzas"
+        ...     "pizzas",
+        ...     whatsapp_number="15551234567"
         ... )
-        >>> items[0]["image_url"]
-        "https://images.unsplash.com/photo-1604068549290..."
+        >>> items[0]["order_url"]
+        "https://wa.me/15551234567?text=add_pizzas_0"
     """
     prepared_items = []
 
-    for item in menu_items:
-        # Generate order URL from item name
-        item_slug = item["name"].lower().replace(" ", "-")
-        order_url = f"{base_order_url}/{category}/{item_slug}"
-
+    for idx, item in enumerate(menu_items):
         # Get image URL with fallback
         image_url = get_menu_item_image_url(
             item_name=item["name"],
@@ -142,13 +142,24 @@ def prepare_menu_items_for_carousel(
             custom_url=item.get("image_url")  # Use if already in menu data
         )
 
+        # Generate order URL
+        if use_whatsapp_deep_link and whatsapp_number:
+            # WhatsApp deep link: opens WhatsApp with pre-filled message
+            # Format: add_category_index (matches cart_handler pattern)
+            order_url = f"https://wa.me/{whatsapp_number}?text=add_{category}_{idx}"
+        else:
+            # Regular URL (external website)
+            item_slug = item["name"].lower().replace(" ", "-")
+            order_url = f"{base_order_url}/{category}/{item_slug}"
+
         prepared_items.append({
             "name": item["name"],
             "description": item.get("description", ""),
             "price": item["price"],
             "image_url": image_url,
             "order_url": order_url,
-            "category": category
+            "category": category,
+            "index": idx  # Add index for reference
         })
 
     return prepared_items
