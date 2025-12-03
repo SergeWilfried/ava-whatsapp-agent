@@ -166,10 +166,12 @@ if interaction_id.startswith("add_"):
 https://wa.me/{PHONE_NUMBER_ID}?text={MESSAGE}
 ```
 
+**Hardcoded Phone Number**: `+15551525021` (configured in whatsapp_response.py)
+
 **Examples**:
-- `https://wa.me/709970042210245?text=add_pizzas_0` → Add Margherita Pizza
-- `https://wa.me/709970042210245?text=add_pizzas_1` → Add Pepperoni Pizza
-- `https://wa.me/709970042210245?text=add_burgers_0` → Add Classic Burger
+- `https://wa.me/15551525021?text=add_pizzas_0` → Add Margherita Pizza
+- `https://wa.me/15551525021?text=add_pizzas_1` → Add Pepperoni Pizza
+- `https://wa.me/15551525021?text=add_burgers_0` → Add Classic Burger
 
 ### Message Pattern
 

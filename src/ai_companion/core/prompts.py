@@ -120,10 +120,32 @@ Enhance the given prompt using the best prompt engineering techniques such as pr
 "realistic photo of a burger" -> "professional food photography of a gourmet burger with melted cheese, fresh lettuce, tomato, on artisan bun, wooden table, natural lighting, shot with 50mm f/1.8 lens, 8425.HEIC"
 """
 
-def get_character_card_prompt(language: str = "en") -> str:
+def get_character_card_prompt(language: str = "auto") -> str:
     """Get the restaurant assistant prompt with language-specific instructions."""
     language_instruction = ""
-    if language == "fr":
+    if language == "auto":
+        # Automatic language detection - let the AI detect and respond in user's language
+        language_instruction = """
+
+# Language Instructions
+
+**IMPORTANT: Always respond in the same language as the user's message.**
+
+- Automatically detect the language of each incoming message
+- Respond in the SAME language as the user (English, French, Spanish, etc.)
+- Maintain the same language throughout the conversation unless the user switches
+- If the user switches languages, immediately follow their lead
+- Supported languages: English, French, Spanish, German, Italian, Portuguese, Arabic, and any other language you're proficient in
+- Use natural, conversational language as you would in a real WhatsApp chat
+- Keep the same friendly, helpful personality regardless of language
+
+Examples:
+- User writes in English → Respond in English
+- User writes in French → Respond in French
+- User writes "Bonjour" → Respond "Bonjour! Comment puis-je vous aider?"
+- User writes "Hello" → Respond "Hello! How can I help you?"
+"""
+    elif language == "fr":
         language_instruction = "\n\n# Language\n\n- You MUST respond in French (français) at all times.\n- All your responses should be in French, maintaining the same personality and style.\n- Use natural, conversational French as you would in a real WhatsApp chat."
     elif language != "en":
         language_instruction = f"\n\n# Language\n\n- You MUST respond in {language} at all times.\n- All your responses should be in {language}, maintaining the same personality and style.\n- Use natural, conversational {language} as you would in a real WhatsApp chat."
@@ -178,8 +200,8 @@ Here's what you know about this customer from previous conversations:
 """
 
 
-# Keep the old constant for backward compatibility, but it will use English
-CHARACTER_CARD_PROMPT = get_character_card_prompt("en")
+# Default to automatic language detection
+CHARACTER_CARD_PROMPT = get_character_card_prompt("auto")
 
 MEMORY_ANALYSIS_PROMPT = """Extract and format important customer information from their message.
 Focus on details that will help provide better service and personalized recommendations.

@@ -184,10 +184,11 @@ async def whatsapp_handler(request: Request) -> Response:
 
                         if category in RESTAURANT_MENU:
                             # Prepare items with automatic images and WhatsApp deep links
+                            # Using hardcoded WhatsApp number for deep links
                             menu_items = prepare_menu_items_for_carousel(
                                 RESTAURANT_MENU[category],
                                 category,
-                                whatsapp_number=phone_number_id,  # Use phone_number_id for deep links
+                                whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
                                 use_whatsapp_deep_link=True  # Enable deep links
                             )
 
@@ -621,10 +622,11 @@ async def whatsapp_handler(request: Request) -> Response:
 
                             if category in RESTAURANT_MENU:
                                 # Prepare items with automatic images and WhatsApp deep links
+                                # Using hardcoded WhatsApp number for deep links
                                 menu_items = prepare_menu_items_for_carousel(
                                     RESTAURANT_MENU[category],
                                     category,
-                                    whatsapp_number=phone_number_id,
+                                    whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
                                     use_whatsapp_deep_link=True
                                 )
 
