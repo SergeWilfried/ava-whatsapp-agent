@@ -641,10 +641,10 @@ def create_order_status_message(order_id: str, status: str, message: str) -> Dic
     return create_button_component(
         f"{emoji} {message}",
         [
-            {"id": "track_order", "title": "📍 Track Order"},
-            {"id": "contact_support", "title": "💬 Contact Us"},
-            {"id": "new_order", "title": "🛒 New Order"}
+            {"id": "track_order", "title": "📍 Suivre Commande"},
+            {"id": "contact_support", "title": "💬 Nous Contacter"},
+            {"id": "new_order", "title": "🛒 Nouvelle Commande"}
         ],
-        header_text=f"Order #{order_id[:8]}",
+        header_text=f"Commande #{order_id[:8]}",
         footer_text=f"Status: {status.replace('_', ' ').title()}"
     )
