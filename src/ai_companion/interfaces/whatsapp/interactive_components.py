@@ -358,7 +358,7 @@ def create_cart_view_buttons(cart_total: float, item_count: int) -> Dict:
         Interactive button component
     """
     return create_button_component(
-        f"Your cart has {item_count} article{'s' if item_count != 1 else ''}",
+        f"Votre panier a {item_count} article{'s' if item_count != 1 else ''}",
         [
             {"id": "checkout", "title": "✅ Commander"},
             {"id": "continue_shopping", "title": "➕ Ajouter"},
@@ -483,17 +483,18 @@ def create_payment_method_list() -> Dict:
     """
     sections = [
         {
-            "title": "💳 Pay Now",
+            "title": "💳 Payer maintenant ",
             "rows": [
-                {"id": "credit_card", "title": "Credit Card", "description": "Visa, Mastercard, Amex"},
-                {"id": "debit_card", "title": "Debit Card", "description": "Bank debit card"},
-                {"id": "mobile_payment", "title": "Mobile Payment", "description": "Apple Pay, Google Pay"}
+                {"id": "credit_card", "title": "Carte Bancaire", "description": "Visa, Mastercard, Amex"},
+                {"id": "debit_card", "title": "Wave", "description": "Wave Mobile Money"},
+                {"id": "p2p", "title": "PII", "description": "P2P"},
+                {"id": "mobile_payment", "title": "Mobile Money", "description": "Orane Money, MoMo"}
             ]
         },
         {
-            "title": "💵 Pay Later",
+            "title": "💵 Cash",
             "rows": [
-                {"id": "cash", "title": "Cash on Delivery", "description": "Pay when you receive"}
+                {"id": "cash", "title": "Paiement à la livraison", "description": " Payez à la réception"}
             ]
         }
     ]
