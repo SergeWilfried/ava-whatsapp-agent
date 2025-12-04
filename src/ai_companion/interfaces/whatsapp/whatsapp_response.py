@@ -20,6 +20,7 @@ from ai_companion.graph import cart_nodes
 from ai_companion.interfaces.whatsapp.interactive_components_v2 import (
     create_category_selection_list,
     create_button_component,
+    create_product_list,
 )
 # Legacy imports for backward compatibility (will be migrated)
 from ai_companion.interfaces.whatsapp.interactive_components import (
