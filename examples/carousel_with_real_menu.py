@@ -72,7 +72,7 @@ def example_mixed_category_carousel():
 
     print(f"✅ Created carousel with {len(all_items)} items")
     for item in all_items[:3]:
-        print(f"   - {item['name']} (${item['price']})")
+        print(f"   - {item['name']} (${item['basePrice']})")
     print(f"   ... and {len(all_items) - 3} more")
     print()
 

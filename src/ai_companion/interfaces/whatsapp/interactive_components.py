@@ -195,7 +195,7 @@ def create_menu_list_from_restaurant_menu(restaurant_menu: Dict, max_items: int 
             rows.append({
                 "id": f"{category}_{idx}",
                 "title": f"{icon} {item['name'][:18]}",  # Leave room for emoji
-                "description": f"${item['price']:.2f} - {item['description'][:50]}"
+                "description": f"${item['basePrice']:.2f} - {item['description'][:50]}"
             })
             total_items += 1
 
@@ -277,7 +277,7 @@ def create_category_specific_menu(category: str, items: List[Dict]) -> Dict:
         rows.append({
             "id": f"{category}_{idx}",
             "title": f"{icon} {item['name'][:18]}",
-            "description": f"${item['price']:.2f} - {item['description'][:50]}"
+            "description": f"${item['basePrice']:.2f} - {item['description'][:50]}"
         })
 
     return create_list_component(

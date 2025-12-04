@@ -196,8 +196,8 @@ def create_product_carousel(
         card_body = product.get("name", "Product")
         if product.get("description"):
             card_body += f"\n{product['description']}"
-        if product.get("price") is not None:
-            card_body += f"\n${product['price']:.2f}"
+        if product.get("basePrice") is not None:
+            card_body += f"\n${product['basePrice']:.2f}"
 
         # Create card
         # Support both product_url and order_url keys

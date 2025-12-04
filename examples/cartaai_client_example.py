@@ -63,7 +63,7 @@ async def example_menu_operations(client: CartaAIClient):
             if products.get("success"):
                 product = products["data"][0]
                 print(f"✅ Product: {product['name']}")
-                print(f"   Price: S/.{product['price']}")
+                print(f"   Price: S/.{product['basePrice']}")
                 print(f"   Presentations: {len(product.get('presentations', []))}")
                 print(f"   Modifiers: {len(product.get('modifiers', []))}")
 
