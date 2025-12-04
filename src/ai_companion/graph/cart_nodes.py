@@ -258,10 +258,14 @@ async def view_cart_node(state: AICompanionState) -> Dict:
     cart_service = CartService()
 
     if cart.is_empty:
-        # Show category selection instead (new flow)
-        interactive_comp = create_category_selection_list()
+        # Don't show category selection if already browsing
+        # Just inform user cart is empty
+        from ai_companion.interfaces.whatsapp.interactive_components import (
+            create_quick_actions_buttons,
+        )
+        interactive_comp = create_quick_actions_buttons()
         return {
-            "messages": AIMessage(content="Your cart is empty. Let's browse the menu!"),
+            "messages": AIMessage(content="🛒 Your cart is empty.\n\nBrowse the menu to add items!"),
             "interactive_component": interactive_comp,
             "order_stage": OrderStage.BROWSING.value
         }

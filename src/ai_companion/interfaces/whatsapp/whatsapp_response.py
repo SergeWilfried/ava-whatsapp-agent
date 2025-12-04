@@ -187,7 +187,14 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     elif node_name == "view_category_carousel":
                         # User selected a category - show items as carousel with images
+                        # Handle both V2 (selected_category_id) and legacy (selected_category)
+                        category_id = state_updates.get("selected_category_id")
                         category = state_updates.get("selected_category", "pizzas")
+
+                        # V2 pattern: "cat_pizzas" -> extract "pizzas"
+                        if category_id and category_id.startswith("cat_"):
+                            category = category_id.replace("cat_", "")
+                            logger.info(f"V2 category selected: {category_id} -> {category}")
 
                         if category in RESTAURANT_MENU:
                             # Prepare items with automatic images and WhatsApp deep links

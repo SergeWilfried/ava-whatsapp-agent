@@ -1,8 +1,16 @@
-"""Handler for shopping cart interactive button/list replies from WhatsApp."""
+"""Handler for shopping cart interactive button/list replies from WhatsApp.
+
+Supports both V2 API patterns (presentation_id, modifiers) and legacy patterns.
+"""
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 from ai_companion.graph.state import AICompanionState
 from ai_companion.modules.cart import OrderStage
+# V2 helper functions for extracting API IDs
+from ai_companion.interfaces.whatsapp.interactive_components_v2 import (
+    extract_presentation_id,
+    extract_modifier_selections,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +90,27 @@ class CartInteractionHandler:
             if len(parts) == 3:  # add_category_index
                 return True
 
-        # Check extras pattern
+        # Check extras pattern (legacy)
         extras = ["extra_cheese", "mushrooms", "olives", "pepperoni", "bacon",
                   "chicken", "gluten_free", "vegan_cheese", "extra_sauce", "extra_toppings"]
         if interaction_id in extras:
+            return True
+
+        # V2 API patterns
+        # Check presentation ID pattern (e.g., "size_pres001", "size_pres002")
+        if interaction_id.startswith("size_pres"):
+            return True
+
+        # Check modifier selection pattern (e.g., "mod_mod001_opt001")
+        if interaction_id.startswith("mod_"):
+            return True
+
+        # Check product ID pattern from API (e.g., "prod_6748abc123", starts with prod_)
+        if interaction_id.startswith("prod_"):
+            return True
+
+        # Check category ID pattern from API (e.g., "cat_6748abc123", starts with cat_)
+        if interaction_id.startswith("cat_"):
             return True
 
         return False
@@ -130,12 +155,23 @@ class CartInteractionHandler:
         Returns:
             Tuple of (node_name, state_updates)
         """
-        # Category selection -> show carousel
+        # V2 API: Category selection from API (e.g., "cat_6748abc123")
+        if interaction_id.startswith("cat_"):
+            return "view_category_carousel", {"selected_category_id": interaction_id}
+
+        # V2 API: Product selection from API (e.g., "prod_6748abc123")
+        if interaction_id.startswith("prod_"):
+            return "add_to_cart", {
+                "current_item": {"menu_item_id": interaction_id},
+                "order_stage": OrderStage.SELECTING.value
+            }
+
+        # Legacy: Category selection (e.g., "category_pizzas", "category_burgers")
         if interaction_id.startswith("category_"):
             category = interaction_id.replace("category_", "")
             return "view_category_carousel", {"selected_category": category}
 
-        # Add item from carousel follow-up buttons (e.g., "add_pizzas_0")
+        # Legacy: Add item from carousel follow-up buttons (e.g., "add_pizzas_0")
         if interaction_id.startswith("add_"):
             parts = interaction_id.split("_")
             if len(parts) == 3:  # add_category_index
@@ -146,7 +182,7 @@ class CartInteractionHandler:
                     "order_stage": OrderStage.SELECTING.value
                 }
 
-        # Menu item selection -> add to cart
+        # Legacy: Menu item selection (e.g., "pizzas_0", "burgers_1")
         if "_" in interaction_id and any(
             interaction_id.startswith(cat) for cat in ["pizzas", "burgers", "sides", "drinks", "desserts"]
         ):
@@ -171,11 +207,18 @@ class CartInteractionHandler:
         if interaction_id == "clear_cart":
             return "clear_cart", {}
 
-        # Size selection
+        # V2 API: Size selection with presentation ID (e.g., "size_pres001")
+        # Legacy: Size selection (e.g., "size_small", "size_medium", "size_large")
         if interaction_id.startswith("size_"):
+            # Both V2 and legacy handled by same node
             return "handle_size", {}
 
-        # Extras selection
+        # V2 API: Modifier selection (e.g., "mod_mod001_opt001")
+        # Legacy: Extras selection (e.g., "extra_cheese", "mushrooms")
+        if interaction_id.startswith("mod_"):
+            return "handle_extras", {}
+
+        # Legacy extras
         extras = ["extra_cheese", "mushrooms", "olives", "pepperoni", "bacon",
                   "chicken", "gluten_free", "vegan_cheese", "extra_sauce", "extra_toppings"]
         if interaction_id in extras:
@@ -318,6 +361,49 @@ class CartInteractionHandler:
         # Default: use title
         return title
 
+    @staticmethod
+    def extract_v2_selections(interaction_data: Dict) -> Dict:
+        """Extract V2 API selections from interaction data.
+
+        Handles both single selections (buttons) and multi-select (list).
+
+        Args:
+            interaction_data: Interactive component data from webhook
+
+        Returns:
+            Dict with extracted V2 data (presentation_id, modifier_selections, etc.)
+        """
+        result = {}
+
+        # Check for list_reply with potential multiple selections
+        if "list_reply" in interaction_data:
+            list_reply = interaction_data["list_reply"]
+            interaction_id = list_reply.get("id", "")
+
+            # Extract presentation ID from size selection
+            if interaction_id.startswith("size_pres"):
+                presentation_id = extract_presentation_id(interaction_id)
+                if presentation_id:
+                    result["presentation_id"] = presentation_id
+
+            # Extract modifier selections (could be multiple)
+            elif interaction_id.startswith("mod_"):
+                # For single selection from list
+                result["modifier_ids"] = [interaction_id]
+
+        # Check for button_reply
+        elif "button_reply" in interaction_data:
+            button_reply = interaction_data["button_reply"]
+            interaction_id = button_reply.get("id", "")
+
+            # Extract presentation ID from size button
+            if interaction_id.startswith("size_pres"):
+                presentation_id = extract_presentation_id(interaction_id)
+                if presentation_id:
+                    result["presentation_id"] = presentation_id
+
+        return result
+
 
 def process_cart_interaction(
     interaction_type: str,
@@ -347,13 +433,36 @@ def process_cart_interaction(
     if not handler.is_cart_interaction(interaction_id):
         return "conversation", {}, title
 
+    # Extract V2 API selections (presentation_id, modifier_ids, etc.)
+    v2_data = handler.extract_v2_selections(interaction_data)
+    logger.info(f"Extracted V2 data: {v2_data}")
+
     # Determine action
     current_stage = current_state.get("order_stage") if current_state else None
     node_name, state_updates = handler.determine_cart_action(interaction_id, current_stage)
 
+    # Merge V2 data into state updates
+    if v2_data:
+        # Get current pending customization
+        pending = current_state.get("pending_customization", {}) if current_state else {}
+
+        # Add presentation ID if extracted
+        if "presentation_id" in v2_data:
+            pending["presentation_id"] = v2_data["presentation_id"]
+
+        # Add modifier IDs if extracted
+        if "modifier_ids" in v2_data:
+            # Convert modifier IDs to selections format
+            modifier_selections = extract_modifier_selections(v2_data["modifier_ids"])
+            pending["modifier_selections"] = modifier_selections
+
+        # Update state with pending customization
+        if pending:
+            state_updates["pending_customization"] = pending
+
     # Create text representation
     text_repr = handler.create_text_representation(action_type, interaction_id, title)
 
-    logger.info(f"Routing to node: {node_name}, text: {text_repr}")
+    logger.info(f"Routing to node: {node_name}, state_updates: {state_updates}, text: {text_repr}")
 
     return node_name, state_updates, text_repr

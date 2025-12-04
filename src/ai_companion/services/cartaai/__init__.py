@@ -33,4 +33,7 @@ def get_cartaai_client() -> CartaAIClient:
         api_key=config.api_key,
         timeout=config.timeout,
         max_retries=config.max_retries,
+        retry_delay=config.retry_delay,
+        max_concurrent_requests=config.max_concurrent_requests,
+        enable_logging=config.enable_api_logging,
     )

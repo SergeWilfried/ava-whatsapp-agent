@@ -140,6 +140,33 @@ from ai_companion.interfaces.whatsapp.carousel_components import (
 
 **Status:** Partially migrated (ready for v2 usage)
 
+### 3. cart_handler.py ✅
+
+**File:** `src/ai_companion/interfaces/whatsapp/cart_handler.py`
+
+**Updated Imports:**
+```python
+# V2 helper functions for extracting API IDs
+from ai_companion.interfaces.whatsapp.interactive_components_v2 import (
+    extract_presentation_id,
+    extract_modifier_selections,
+)
+```
+
+**V2 Pattern Recognition:**
+- ✅ `size_pres*` - API presentation IDs (e.g., `size_pres001`)
+- ✅ `mod_*` - API modifier selections (e.g., `mod_mod001_opt001`)
+- ✅ `prod_*` - API product IDs (e.g., `prod_6748abc123`)
+- ✅ `cat_*` - API category IDs (e.g., `cat_6748abc123`)
+
+**New Methods:**
+- ✅ `extract_v2_selections()` - Extracts V2 data from webhook interactions
+- ✅ Enhanced `is_cart_interaction()` - Recognizes V2 patterns
+- ✅ Enhanced `determine_cart_action()` - Routes V2 interactions
+- ✅ Enhanced `process_cart_interaction()` - Merges V2 data into state
+
+**Status:** ✅ Fully migrated (V2 pattern support added)
+
 ---
 
 ## 🎯 Migration Checklist
@@ -160,9 +187,11 @@ from ai_companion.interfaces.whatsapp.carousel_components import (
 - [x] Update cart_nodes.py to use async cart operations
 - [x] Update all cart operation handlers to async
 - [x] Replace legacy message builders with v2 formatters (order confirmation)
+- [x] Update webhook handlers to use v2 responses (cart_handler.py)
 
 ### Pending ⏳
-- [ ] Update webhook handlers to use v2 responses
+- [ ] Update whatsapp_response.py to use v2 menu API
+- [ ] Update carousel generation with v2 API products
 - [ ] Integration testing with v2 components
 - [ ] Remove legacy component usage completely
 
@@ -442,6 +471,7 @@ asyncio.run(test_v2_features())
 - [Quick Reference](./V2_QUICK_REFERENCE.md) - Code examples
 - [Phase 3 Implementation](./PHASE_3_IMPLEMENTATION.md) - Order creation
 - [Async Migration Complete](./ASYNC_MIGRATION_COMPLETE.md) - Handler async/await updates ✅
+- [Webhook Handler V2 Update](./WEBHOOK_HANDLER_V2_UPDATE.md) - Webhook V2 pattern support ✅
 
 ---
 
