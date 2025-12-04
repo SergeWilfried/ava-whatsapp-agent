@@ -38,6 +38,7 @@ from ai_companion.interfaces.whatsapp.image_utils import (
 )
 from ai_companion.core.schedules import RESTAURANT_MENU
 from ai_companion.modules.cart import OrderStage
+from ai_companion.services.menu_adapter import MenuAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,17 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     elif node_name == "view_menu":
                         # User selected "View Menu" - show category selection
-                        interactive_comp = create_category_selection_list()
+                        # Fetch categories from API (or use mock data as fallback)
+                        menu_adapter = MenuAdapter()
+                        try:
+                            menu_structure = await menu_adapter.get_menu_structure()
+                            categories = menu_structure.get("categories", [])
+                            logger.info(f"Fetched {len(categories)} categories for menu display")
+                            interactive_comp = create_category_selection_list(categories)
+                        except Exception as e:
+                            logger.error(f"Error fetching menu structure: {e}, using mock data")
+                            interactive_comp = create_category_selection_list()
+
                         success = await send_response(
                             from_number,
                             "Browse our menu by category:",
