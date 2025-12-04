@@ -248,7 +248,7 @@ def create_category_menu_buttons(available_categories: List[str] = None) -> Dict
     return create_button_component(
         "What would you like to browse?",
         buttons,
-        header_text="Menu Categories"
+        header_text="Catégories du menu"
     )
 
 
@@ -302,9 +302,9 @@ def create_order_confirmation_buttons(order_total: float) -> Dict:
         [
             {"id": "confirm_delivery", "title": "Delivery 🚗"},
             {"id": "confirm_pickup", "title": "Pickup 🏃"},
-            {"id": "cancel_order", "title": "Cancel ❌"}
+            {"id": "cancel_order", "title": "Annuler ❌"}
         ],
-        header_text="Order Confirmation"
+        header_text="Confirmation de commande"
     )
 
 
@@ -321,7 +321,7 @@ def create_quick_actions_buttons() -> Dict:
             {"id": "track_order", "title": "📦 Track Order"},
             {"id": "contact_us", "title": "📞 Contact Us"}
         ],
-        header_text="Quick Actions"
+        header_text="Bonjour, Comment Puis je vous aider aujourdhui ?"
     )
 
 
@@ -364,7 +364,7 @@ def create_cart_view_buttons(cart_total: float, item_count: int) -> Dict:
             {"id": "continue_shopping", "title": "➕ Add More"},
             {"id": "clear_cart", "title": "🗑️ Clear Cart"}
         ],
-        header_text=f"Cart Total: ${cart_total:.2f}"
+        header_text=f"Total: ${cart_total:.2f}"
     )
 
 
@@ -467,11 +467,11 @@ def create_delivery_method_buttons() -> Dict:
     return create_button_component(
         "How would you like to receive your order?",
         [
-            {"id": "delivery", "title": "🚗 Delivery"},
-            {"id": "pickup", "title": "🏃 Pickup"},
-            {"id": "dine_in", "title": "🍽️ Dine-In"}
+            {"id": "delivery", "title": "🚗 Livraison"},
+            {"id": "pickup", "title": "🏃 Retrait"},
+            {"id": "dine_in", "title": "🍽️ Sur Place"}
         ],
-        header_text="Delivery Method"
+        header_text="Methode de Livraison"
     )
 
 
@@ -499,10 +499,10 @@ def create_payment_method_list() -> Dict:
     ]
 
     return create_list_component(
-        "Choose your payment method:",
+        "Choisissez votre mode de paiement :",
         sections,
-        button_text="Select Payment",
-        header_text="Payment"
+        button_text="Sélectionner le paiement",
+        header_text="Paiement"
     )
 
 
@@ -559,8 +559,8 @@ Total: ${total:.2f}
             {"id": "edit_order", "title": "✏️ Edit"},
             {"id": "cancel_order", "title": "❌ Cancel"}
         ],
-        header_text=f"Order #{order_data.get('order_id', 'unknown')[:8]}",
-        footer_text=f"Est. time: {order_data.get('estimated_time', '30-45 min')}"
+        header_text=f"Commande #{order_data.get('order_id', 'unknown')[:8]}",
+        footer_text=f"Temps Est.: {order_data.get('estimated_time', '30-45 min')}"
     )
 
 
@@ -600,13 +600,13 @@ def create_category_selection_list() -> Dict:
         })
 
     return create_list_component(
-        body_text="What would you like to browse? 😋",
+        body_text="Que souhaitez-vous commander aujourdhui ? 😋",
         sections=[{
             "title": "Menu Categories",
             "rows": rows
         }],
-        button_text="Browse Menu",
-        header_text="Our Menu",
+        button_text="Parcourir le menu",
+        header_text="Notre Menu",
         footer_text="Tap to see items"
     )
 

@@ -52,7 +52,7 @@ def create_button_component(
 def create_list_component(
     body_text: str,
     sections: List[Dict],
-    button_text: str = "View Menu",
+    button_text: str = "Voir le Menu",
     header_text: Optional[str] = None,
     footer_text: Optional[str] = None,
 ) -> Dict:
@@ -174,11 +174,11 @@ def create_product_list(
     ]
 
     return create_list_component(
-        body_text=f"Choose from our {category_name}:",
+        body_text=f"Choisissez parmi notre  {category_name}:",
         sections=sections,
-        button_text="Select Item",
+        button_text="Sélectionner un article",
         header_text=header_text,
-        footer_text="Tap to add to cart"
+        footer_text="Taper pour ajouter au panier"
     )
 
 
@@ -237,20 +237,20 @@ def create_size_selection_buttons(
         large_price = base_price * 1.3
 
         buttons = [
-            {"id": "size_small", "title": f"Small ${small_price:.2f}"},
-            {"id": "size_medium", "title": f"Medium ${base_price:.2f}"},
-            {"id": "size_large", "title": f"Large ${large_price:.2f}"},
+            {"id": "size_small", "title": f"Petit ${small_price:.2f}"},
+            {"id": "size_medium", "title": f"Moyen ${base_price:.2f}"},
+            {"id": "size_large", "title": f"Grand ${large_price:.2f}"},
         ]
 
     else:
         # No size selection available
         logger.warning("No presentations or base_price provided, showing single option")
-        buttons = [{"id": "size_default", "title": "Standard Size"}]
+        buttons = [{"id": "size_default", "title": "Taille Standard"}]
 
     return create_button_component(
-        f"Choose your size for {item_name}:",
+        f"Choisissez votre taille pour {item_name}:",
         buttons,
-        header_text="🍽️ Size Selection",
+        header_text="🍽️ Sélection de la taille",
     )
 
 
@@ -417,7 +417,7 @@ def create_extras_list(
                     "rows": [
                         {
                             "id": "no_extras",
-                            "title": "No extras",
+                            "title": "Pas de suppléments",
                             "description": "$0.00",
                         }
                     ],
@@ -425,10 +425,10 @@ def create_extras_list(
             )
 
     return create_list_component(
-        f"Choose your extras (up to {max_selections}):",
+        f"Choisissez vos suppléments (jusqua to {max_selections}):",
         sections,
-        button_text="Add Extras",
-        header_text="🎨 Customize",
+        button_text="Ajouter Suppléments",
+        header_text="🎨 Personnaliser",
     )
 
 
@@ -501,10 +501,10 @@ def create_modifiers_list(
         return None
 
     return create_list_component(
-        f"Customize your {item_name}:",
+        f"Personnaliser votre {item_name}:",
         sections,
-        button_text="Continue",
-        header_text="🎨 Customize Order",
+        button_text="poursuivre",
+        header_text="🎨 Personnaliser la commande",
     )
 
 
@@ -583,10 +583,10 @@ def create_category_selection_list(categories: Optional[List[Dict]] = None) -> D
         ]
 
     return create_list_component(
-        "What would you like to order? Browse our menu below:",
+        "Que souhaitez-vous commander ? Consultez notre menu ci-dessous :",
         sections,
-        button_text="View Menu",
-        header_text="🍽️ Our Menu",
+        button_text="Voir le Menu",
+        header_text="🍽️ Notre Menu",
     )
 
 
