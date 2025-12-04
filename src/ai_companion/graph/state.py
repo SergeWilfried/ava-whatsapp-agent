@@ -25,6 +25,9 @@ class AICompanionState(MessagesState):
         delivery_method (str): Chosen delivery method (delivery, pickup, dine_in)
         payment_method (str): Chosen payment method
         active_order_id (str): ID of the currently active order
+        delivery_address (str): Delivery address for delivery orders
+        customer_name (str): Customer name for orders
+        customer_phone (str): Customer phone number (required for all order types)
 
         # Location fields
         user_location (dict): User's shared location with latitude, longitude, address, name

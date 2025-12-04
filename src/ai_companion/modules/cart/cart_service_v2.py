@@ -289,8 +289,8 @@ class CartService:
         cart: ShoppingCart,
         delivery_method: DeliveryMethod,
         customer_name: Optional[str] = None,
+        customer_phone: Optional[str] = None,
         delivery_address: Optional[str] = None,
-        delivery_phone: Optional[str] = None,
         payment_method: Optional[PaymentMethod] = None,
         special_instructions: Optional[str] = None,
         delivery_instructions: Optional[str] = None,
@@ -302,8 +302,8 @@ class CartService:
             cart: Shopping cart to convert to order
             delivery_method: How customer wants to receive order
             customer_name: Customer name
+            customer_phone: Customer contact phone (required for all order types)
             delivery_address: Delivery address (required for delivery)
-            delivery_phone: Contact phone
             payment_method: Payment method
             special_instructions: Order-level special instructions
             delivery_instructions: Delivery-specific instructions
@@ -318,7 +318,7 @@ class CartService:
             delivery_method=delivery_method,
             payment_method=payment_method or PaymentMethod.CASH,
             delivery_address=delivery_address,
-            delivery_phone=delivery_phone,
+            customer_phone=customer_phone,
             customer_name=customer_name,
             special_instructions=special_instructions,
         )
@@ -341,7 +341,7 @@ class CartService:
                 # Validate required fields for API
                 # API requires non-empty customer_name and customer_phone
                 api_customer_name = customer_name if customer_name and customer_name.strip() else "Guest"
-                api_customer_phone = delivery_phone if delivery_phone and delivery_phone.strip() else None
+                api_customer_phone = customer_phone if customer_phone and customer_phone.strip() else None
 
                 if not api_customer_phone:
                     raise ValueError("Customer phone is required for API order creation")
@@ -406,8 +406,8 @@ class CartService:
         cart: ShoppingCart,
         delivery_method: DeliveryMethod,
         customer_name: Optional[str] = None,
+        customer_phone: Optional[str] = None,
         delivery_address: Optional[str] = None,
-        delivery_phone: Optional[str] = None,
         payment_method: Optional[PaymentMethod] = None,
         special_instructions: Optional[str] = None,
         delivery_instructions: Optional[str] = None,
@@ -428,8 +428,8 @@ class CartService:
                 cart=cart,
                 delivery_method=delivery_method,
                 customer_name=customer_name,
+                customer_phone=customer_phone,
                 delivery_address=delivery_address,
-                delivery_phone=delivery_phone,
                 payment_method=payment_method,
                 special_instructions=special_instructions,
                 delivery_instructions=delivery_instructions,

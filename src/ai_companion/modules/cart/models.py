@@ -210,9 +210,9 @@ class Order:
     delivery_method: Optional[DeliveryMethod] = None
     payment_method: Optional[PaymentMethod] = None
 
-    # Delivery information
+    # Customer and delivery information
     delivery_address: Optional[str] = None
-    delivery_phone: Optional[str] = None
+    customer_phone: Optional[str] = None  # Required for all order types (delivery, pickup, dine-in)
     customer_name: Optional[str] = None
 
     # API integration fields
@@ -265,7 +265,7 @@ class Order:
             "delivery_method": self.delivery_method.value if self.delivery_method else None,
             "payment_method": self.payment_method.value if self.payment_method else None,
             "delivery_address": self.delivery_address,
-            "delivery_phone": self.delivery_phone,
+            "customer_phone": self.customer_phone,
             "customer_name": self.customer_name,
             "api_order_id": self.api_order_id,
             "api_order_number": self.api_order_number,

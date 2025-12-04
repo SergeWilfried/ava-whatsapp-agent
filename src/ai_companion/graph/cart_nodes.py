@@ -398,18 +398,18 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
     delivery_method_str = state.get("delivery_method", DeliveryMethod.DELIVERY.value)
     delivery_method = DeliveryMethod(delivery_method_str)
     delivery_address = state.get("delivery_address")
-    delivery_phone = state.get("delivery_phone")
+    customer_phone = state.get("customer_phone")
     customer_name = state.get("customer_name", "Customer")
-    # Use WhatsApp phone number as fallback for delivery_phone
+    # Use WhatsApp phone number as fallback for customer_phone
     user_phone = state.get("user_phone")
 
-    logger.info(f"Order creation - delivery_phone: {delivery_phone}, user_phone: {user_phone}")
+    logger.info(f"Order creation - customer_phone: {customer_phone}, user_phone: {user_phone}")
 
-    if not delivery_phone and user_phone:
-        delivery_phone = user_phone
-        logger.info(f"Using user_phone as delivery_phone: {delivery_phone}")
-    elif not delivery_phone:
-        logger.warning("No delivery_phone or user_phone available - requesting from user")
+    if not customer_phone and user_phone:
+        customer_phone = user_phone
+        logger.info(f"Using user_phone as customer_phone: {customer_phone}")
+    elif not customer_phone:
+        logger.warning("No customer_phone or user_phone available - requesting from user")
         # Ask user for phone number
         return {
             "messages": [AIMessage(content="Pour finaliser votre commande, veuillez fournir votre numéro de téléphone s'il vous plaît. 📱")],
@@ -422,8 +422,8 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
         delivery_method=delivery_method,
         payment_method=PaymentMethod(payment_method),
         customer_name=customer_name,
+        customer_phone=customer_phone,
         delivery_address=delivery_address,
-        delivery_phone=delivery_phone,
     )
 
     # Generate order details interactive message
@@ -457,7 +457,7 @@ async def confirm_order_node(state: AICompanionState) -> Dict:
     delivery_method_str = state.get("delivery_method", DeliveryMethod.DELIVERY.value)
     payment_method_str = state.get("payment_method", PaymentMethod.CASH.value)
     delivery_address = state.get("delivery_address")
-    delivery_phone = state.get("delivery_phone")
+    customer_phone = state.get("customer_phone")
     customer_name = state.get("customer_name", "Customer")
 
     order = await cart_service.create_order_from_cart(
@@ -465,8 +465,8 @@ async def confirm_order_node(state: AICompanionState) -> Dict:
         delivery_method=DeliveryMethod(delivery_method_str),
         payment_method=PaymentMethod(payment_method_str),
         customer_name=customer_name,
+        customer_phone=customer_phone,
         delivery_address=delivery_address,
-        delivery_phone=delivery_phone,
     )
 
     # Confirm order
