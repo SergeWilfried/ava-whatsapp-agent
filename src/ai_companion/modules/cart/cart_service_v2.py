@@ -338,10 +338,18 @@ class CartService:
             try:
                 logger.info("Creating order via CartaAI API")
 
+                # Validate required fields for API
+                # API requires non-empty customer_name and customer_phone
+                api_customer_name = customer_name if customer_name and customer_name.strip() else "Guest"
+                api_customer_phone = delivery_phone if delivery_phone and delivery_phone.strip() else None
+
+                if not api_customer_phone:
+                    raise ValueError("Customer phone is required for API order creation")
+
                 api_response = await self.order_service.create_order(
                     cart=cart,
-                    customer_name=customer_name or "Guest",
-                    customer_phone=delivery_phone or "",
+                    customer_name=api_customer_name,
+                    customer_phone=api_customer_phone,
                     delivery_method=delivery_method,
                     payment_method=payment_method or PaymentMethod.CASH,
                     delivery_address=delivery_address,
