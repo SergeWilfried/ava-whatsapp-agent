@@ -84,8 +84,8 @@ class MenuAdapter:
                     enable_cache=self.config.enable_cache,
                 )
 
-                # Build ID mappings
-                await self._build_id_mappings()
+                # Build ID mappings - DISABLED: No longer using legacy IDs
+                # await self._build_id_mappings()
 
                 self._initialized = True
                 logger.info("MenuAdapter initialized with API integration")
@@ -145,14 +145,9 @@ class MenuAdapter:
         Returns:
             Menu item dict or None
         """
-        # Check if this is a legacy ID that needs mapping
+        # Use the product ID directly (API format)
+        # Legacy ID mapping has been disabled - all IDs are now API IDs
         api_id = menu_item_id
-        if "_" in menu_item_id:
-            # Legacy format, map to API ID
-            api_id = self._mapper.get_api_id(menu_item_id)
-            if not api_id:
-                logger.warning(f"No API mapping for legacy ID: {menu_item_id}")
-                return None
 
         # Fetch from API
         product = await self._menu_service.get_product_by_id(api_id)

@@ -204,75 +204,118 @@ async def whatsapp_handler(request: Request) -> Response:
                         category_id = state_updates.get("selected_category_id")
                         category = state_updates.get("selected_category", "pizzas")
 
-                        # V2 pattern: "cat_pizzas" -> extract "pizzas"
-                        if category_id and category_id.startswith("cat_"):
-                            category = category_id.replace("cat_", "")
-                            logger.info(f"V2 category selected: {category_id} -> {category}")
+                        # Fetch products from API
+                        menu_adapter = MenuAdapter()
+                        try:
+                            # V2 pattern: "cat_{api_category_id}" -> extract API ID
+                            if category_id and category_id.startswith("cat_"):
+                                api_category_id = category_id.replace("cat_", "")
+                                logger.info(f"V2 category selected: {category_id} -> API ID: {api_category_id}")
 
-                        if category in RESTAURANT_MENU:
-                            # Prepare items with automatic images and WhatsApp deep links
-                            # Using hardcoded WhatsApp number for deep links
-                            menu_items = prepare_menu_items_for_carousel(
-                                RESTAURANT_MENU[category],
-                                category,
-                                whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
-                                use_whatsapp_deep_link=True  # Enable deep links
-                            )
+                                # Fetch category with products from API
+                                menu_structure = await menu_adapter.get_menu_structure()
+                                categories = menu_structure.get("data", {}).get("categories", [])
 
-                            # Create beautiful carousel with images
-                            carousel = create_restaurant_menu_carousel(
-                                menu_items,
-                                body_text=f"Check out our {category}! 😋 Swipe to browse",
-                                button_text="View"
-                            )
+                                # Find the selected category
+                                selected_category = None
+                                for cat in categories:
+                                    if cat.get("id") == api_category_id:
+                                        selected_category = cat
+                                        break
 
-                            # Send carousel
-                            success = await send_response(
-                                from_number,
-                                "",  # Body text is in carousel
-                                "interactive_carousel",
-                                phone_number_id=phone_number_id,
-                                whatsapp_token=whatsapp_token,
-                                interactive_component=carousel
-                            )
+                                if selected_category:
+                                    products = selected_category.get("products", [])
+                                    category_name = selected_category.get("name", category)
+                                else:
+                                    products = []
+                                    category_name = category
+                            else:
+                                # Legacy fallback
+                                products = RESTAURANT_MENU.get(category, [])
+                                category_name = category
 
-                            # Update state with category
-                            await graph.aupdate_state(
-                                config={"configurable": {"thread_id": session_id}},
-                                values={"selected_category": category}
-                            )
+                            if products:
+                                # Prepare items with automatic images and WhatsApp deep links
+                                # Using hardcoded WhatsApp number for deep links
+                                menu_items = prepare_menu_items_for_carousel(
+                                    products,
+                                    category_name,
+                                    whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
+                                    use_whatsapp_deep_link=True  # Enable deep links
+                                )
 
-                            # Now send follow-up buttons for cart actions
-                            buttons = create_button_component(
-                                f"Which {category.rstrip('s')} would you like to add to your cart?",
-                                [
-                                    {"id": f"add_{category}_0", "title": f"Add {menu_items[0]['name'][:15]}"} if len(menu_items) > 0 else {"id": "back", "title": "Back"},
-                                    {"id": f"add_{category}_1", "title": f"Add {menu_items[1]['name'][:15]}"} if len(menu_items) > 1 else {"id": "view_cart", "title": "View Cart"},
-                                    {"id": "view_cart", "title": "🛒 View Cart"}
-                                ][:3]  # Max 3 buttons
-                            )
+                                # Create beautiful carousel with images
+                                carousel = create_restaurant_menu_carousel(
+                                    menu_items,
+                                    body_text=f"Check out our {category_name}! 😋 Swipe to browse",
+                                    button_text="View"
+                                )
 
-                            # Send action buttons after a brief moment
+                                # Send carousel
+                                success = await send_response(
+                                    from_number,
+                                    "",  # Body text is in carousel
+                                    "interactive_carousel",
+                                    phone_number_id=phone_number_id,
+                                    whatsapp_token=whatsapp_token,
+                                    interactive_component=carousel
+                                )
+
+                                # Update state with category
+                                await graph.aupdate_state(
+                                    config={"configurable": {"thread_id": session_id}},
+                                    values={"selected_category": category}
+                                )
+
+                                # Now send follow-up buttons for cart actions (using API product IDs)
+                                button_list = []
+                                if len(products) > 0:
+                                    product_id = products[0].get("id")
+                                    button_list.append({"id": f"add_product_{product_id}", "title": f"Add {menu_items[0]['name'][:15]}"})
+                                if len(products) > 1:
+                                    product_id = products[1].get("id")
+                                    button_list.append({"id": f"add_product_{product_id}", "title": f"Add {menu_items[1]['name'][:15]}"})
+                                button_list.append({"id": "view_cart", "title": "🛒 View Cart"})
+
+                                buttons = create_button_component(
+                                    f"Which {category_name.rstrip('s')} would you like to add to your cart?",
+                                    button_list[:3]  # Max 3 buttons
+                                )
+
+                                # Send action buttons after a brief moment
+                                await send_response(
+                                    from_number,
+                                    "Select an item to add to your cart:",
+                                    "interactive_button",
+                                    phone_number_id=phone_number_id,
+                                    whatsapp_token=whatsapp_token,
+                                    interactive_component=buttons
+                                )
+
+                                return Response(content="Category carousel sent", status_code=200)
+                            else:
+                                # No products found, send error
+                                await send_response(
+                                    from_number,
+                                    "Sorry, that category is not available or has no products.",
+                                    "text",
+                                    phone_number_id=phone_number_id,
+                                    whatsapp_token=whatsapp_token
+                                )
+                                return Response(content="Invalid category", status_code=200)
+
+                        except Exception as e:
+                            logger.error(f"Error fetching products for category: {e}")
                             await send_response(
                                 from_number,
-                                "Select an item to add to your cart:",
-                                "interactive_button",
-                                phone_number_id=phone_number_id,
-                                whatsapp_token=whatsapp_token,
-                                interactive_component=buttons
-                            )
-
-                            return Response(content="Category carousel sent", status_code=200)
-                        else:
-                            # Category not found, send error
-                            await send_response(
-                                from_number,
-                                "Sorry, that category is not available.",
+                                "Sorry, there was an error loading the menu. Please try again.",
                                 "text",
                                 phone_number_id=phone_number_id,
                                 whatsapp_token=whatsapp_token
                             )
-                            return Response(content="Invalid category", status_code=200)
+                            return Response(content="Error loading category", status_code=200)
+                        finally:
+                            await menu_adapter.close()
 
                     elif node_name == "add_to_cart":
                         # Update state with selected item
@@ -646,33 +689,68 @@ async def whatsapp_handler(request: Request) -> Response:
                         if node_name == "view_category_carousel":
                             # User selected a category via deep link - show items as carousel
                             category = state_updates.get("selected_category", "pizzas")
+                            category_id = state_updates.get("selected_category_id")
 
-                            if category in RESTAURANT_MENU:
-                                # Prepare items with automatic images and WhatsApp deep links
-                                # Using hardcoded WhatsApp number for deep links
-                                menu_items = prepare_menu_items_for_carousel(
-                                    RESTAURANT_MENU[category],
-                                    category,
-                                    whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
-                                    use_whatsapp_deep_link=True
-                                )
+                            # Fetch products from API
+                            menu_adapter = MenuAdapter()
+                            try:
+                                menu_structure = await menu_adapter.get_menu_structure()
+                                categories = menu_structure.get("data", {}).get("categories", [])
 
-                                # Create carousel
-                                carousel = create_restaurant_menu_carousel(
-                                    menu_items,
-                                    body_text=f"Check out our {category}! 😋 Swipe to browse",
-                                    button_text="View"
-                                )
+                                # Find category by ID or name
+                                selected_category = None
+                                if category_id and category_id.startswith("cat_"):
+                                    api_category_id = category_id.replace("cat_", "")
+                                    for cat in categories:
+                                        if cat.get("id") == api_category_id:
+                                            selected_category = cat
+                                            break
+                                else:
+                                    # Search by name (fallback for legacy)
+                                    for cat in categories:
+                                        if cat.get("name", "").lower() == category.lower():
+                                            selected_category = cat
+                                            break
 
-                                # Send carousel
+                                if selected_category:
+                                    products = selected_category.get("products", [])
+                                    category_name = selected_category.get("name", category)
+
+                                    # Prepare items with automatic images and WhatsApp deep links
+                                    menu_items = prepare_menu_items_for_carousel(
+                                        products,
+                                        category_name,
+                                        whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
+                                        use_whatsapp_deep_link=True
+                                    )
+
+                                    # Create carousel
+                                    carousel = create_restaurant_menu_carousel(
+                                        menu_items,
+                                        body_text=f"Check out our {category_name}! 😋 Swipe to browse",
+                                        button_text="View"
+                                    )
+
+                                    # Send carousel
+                                    await send_response(
+                                        from_number,
+                                        "",
+                                        "interactive_carousel",
+                                        phone_number_id=phone_number_id,
+                                        whatsapp_token=whatsapp_token,
+                                        interactive_component=carousel
+                                    )
+                            except Exception as e:
+                                logger.error(f"Error fetching category products: {e}")
                                 await send_response(
                                     from_number,
-                                    "",
-                                    "interactive_carousel",
+                                    "Sorry, there was an error loading the menu. Please try again.",
+                                    "text",
                                     phone_number_id=phone_number_id,
-                                    whatsapp_token=whatsapp_token,
-                                    interactive_component=carousel
+                                    whatsapp_token=whatsapp_token
                                 )
+                            finally:
+                                await menu_adapter.close()
 
                                 # Update state
                                 await graph.aupdate_state(

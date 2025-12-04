@@ -108,9 +108,7 @@ class ProductIDMapper:
 
                 # Map products within this category
                 api_products = category.get("products", [])
-                legacy_products = legacy_menu.get(legacy_category_key, {}).get(
-                    "items", []
-                )
+                legacy_products = legacy_menu.get(legacy_category_key, [])
 
                 self._map_products_by_position(
                     legacy_category_key, api_products, legacy_products

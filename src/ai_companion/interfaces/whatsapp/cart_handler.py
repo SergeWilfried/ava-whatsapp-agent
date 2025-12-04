@@ -84,10 +84,11 @@ class CartInteractionHandler:
                     except ValueError:
                         pass
 
-        # Check add pattern for carousel follow-up buttons (e.g., "add_pizzas_0")
+        # Check add pattern for carousel follow-up buttons
+        # Legacy: "add_pizzas_0" or API: "add_product_prod001"
         if interaction_id.startswith("add_"):
             parts = interaction_id.split("_")
-            if len(parts) == 3:  # add_category_index
+            if len(parts) == 3:  # add_category_index (legacy) or add_product_{id}
                 return True
 
         # Check extras pattern (legacy)
@@ -171,16 +172,26 @@ class CartInteractionHandler:
             category = interaction_id.replace("category_", "")
             return "view_category_carousel", {"selected_category": category}
 
-        # Legacy: Add item from carousel follow-up buttons (e.g., "add_pizzas_0")
+        # Add item from carousel follow-up buttons
+        # API format: "add_product_prod001" or Legacy: "add_pizzas_0"
         if interaction_id.startswith("add_"):
             parts = interaction_id.split("_")
-            if len(parts) == 3:  # add_category_index
-                category, idx = parts[1], parts[2]
-                menu_item_id = f"{category}_{idx}"
-                return "add_to_cart", {
-                    "current_item": {"menu_item_id": menu_item_id},
-                    "order_stage": OrderStage.SELECTING.value
-                }
+            if len(parts) == 3:
+                if parts[1] == "product":
+                    # API format: add_product_{product_id}
+                    product_id = parts[2]
+                    return "add_to_cart", {
+                        "current_item": {"menu_item_id": product_id},
+                        "order_stage": OrderStage.SELECTING.value
+                    }
+                else:
+                    # Legacy format: add_{category}_{index}
+                    category, idx = parts[1], parts[2]
+                    menu_item_id = f"{category}_{idx}"
+                    return "add_to_cart", {
+                        "current_item": {"menu_item_id": menu_item_id},
+                        "order_stage": OrderStage.SELECTING.value
+                    }
 
         # Legacy: Menu item selection (e.g., "pizzas_0", "burgers_1")
         if "_" in interaction_id and any(
