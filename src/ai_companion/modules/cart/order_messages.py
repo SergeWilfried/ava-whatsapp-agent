@@ -15,19 +15,19 @@ def format_order_confirmation(order: Order) -> str:
     Returns:
         Formatted confirmation message
     """
-    lines = ["✅ *Order Confirmed!*\n"]
+    lines = ["✅ *Commande Confirmée!*\n"]
 
     # Order number (prefer API order number if available)
     if order.api_order_number:
-        lines.append(f"📋 Order: *{order.api_order_number}*")
+        lines.append(f"📋 Votre Commande: *{order.api_order_number}*")
     else:
-        lines.append(f"📋 Order: *{order.order_id}*")
+        lines.append(f"📋 Votre Commande: *{order.order_id}*")
 
     lines.append("")
 
     # Customer info
     if order.customer_name:
-        lines.append(f"👤 Customer: {order.customer_name}")
+        lines.append(f"👤 Client: {order.customer_name}")
 
     if order.delivery_phone:
         lines.append(f"📞 Phone: {order.delivery_phone}")
@@ -35,7 +35,7 @@ def format_order_confirmation(order: Order) -> str:
     lines.append("")
 
     # Order items
-    lines.append("🛒 *Your Order:*")
+    lines.append("🛒 *Votre Commande:*")
     for item in order.cart.items:
         size_text = (
             f" ({item.customization.size})"
