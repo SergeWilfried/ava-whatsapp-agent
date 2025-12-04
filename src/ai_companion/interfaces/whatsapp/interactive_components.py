@@ -342,9 +342,6 @@ def create_item_added_buttons(item_name: str, cart_total: float, item_count: int
             {"id": "continue_shopping", "title": "➕ Ajouter Plus"},
             {"id": "view_cart", "title": "🛒 Voir Panier"},
             {"id": "checkout", "title": "✅ Payer"}
-            {"id": "continue_shopping", "title": "➕ Ajouter"},
-            {"id": "view_cart", "title": "🛒 Voir Mon Panier"},
-            {"id": "checkout", "title": "✅ Commander"}
         ],
         footer_text=f"{item_count} articles • ${cart_total:.2f}"
     )
@@ -365,9 +362,6 @@ def create_cart_view_buttons(cart_total: float, item_count: int) -> Dict:
         [
             {"id": "checkout", "title": "✅ Payer"},
             {"id": "continue_shopping", "title": "➕ Ajouter Plus"},
-            {"id": "clear_cart", "title": "🗑️ Clear Cart"}
-            {"id": "checkout", "title": "✅ Commander"},
-            {"id": "continue_shopping", "title": "➕ Ajouter"},
             {"id": "clear_cart", "title": "🗑️ Vider le Panier"}
         ],
         header_text=f"Total: ${cart_total:.2f}"
@@ -510,10 +504,6 @@ def create_payment_method_list() -> Dict:
         sections=sections,
         button_text="Sélectionner Paiement", # Translated
         header_text="Paiement" # Translated
-        "Choisissez votre mode de paiement :",
-        sections,
-        button_text="Payer",
-        header_text="Paiement"
     )
 
 
@@ -610,7 +600,6 @@ def create_category_selection_list() -> Dict:
         })
 
     return create_list_component(
-        body_text="Bonjour, Que souhaitez-vous commander aujourdhui ? 😋",
         body_text="Que souhaitez-vous commander aujourdhui ? 😋",
         sections=[{
             "title": "Menu Categories",
@@ -619,9 +608,6 @@ def create_category_selection_list() -> Dict:
         button_text="Parcourir Menu",
         header_text="Notre Menu",
         footer_text="Appuyez pour voir les articles"
-        button_text="Parcourir le menu",
-        header_text="Notre Menu",
-        footer_text="Tap to see items"
     )
 
 
