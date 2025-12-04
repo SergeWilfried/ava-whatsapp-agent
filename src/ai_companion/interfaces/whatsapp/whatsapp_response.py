@@ -179,12 +179,14 @@ async def whatsapp_handler(request: Request) -> Response:
                         menu_adapter = MenuAdapter()
                         try:
                             menu_structure = await menu_adapter.get_menu_structure()
-                            categories = menu_structure.get("categories", [])
+                            categories = menu_structure.get("data", {}).get("categories", [])
                             logger.info(f"Fetched {len(categories)} categories for menu display")
                             interactive_comp = create_category_selection_list(categories)
                         except Exception as e:
                             logger.error(f"Error fetching menu structure: {e}, using mock data")
                             interactive_comp = create_category_selection_list()
+                        finally:
+                            await menu_adapter.close()
 
                         success = await send_response(
                             from_number,
@@ -777,12 +779,14 @@ async def whatsapp_handler(request: Request) -> Response:
                 menu_adapter = MenuAdapter()
                 try:
                     menu_structure = await menu_adapter.get_menu_structure()
-                    categories = menu_structure.get("categories", [])
+                    categories = menu_structure.get("data", {}).get("categories", [])
                     logger.info(f"Fetched {len(categories)} categories via use_interactive_menu flag")
                     interactive_comp = create_category_selection_list(categories)
                 except Exception as e:
                     logger.error(f"Error fetching menu structure via use_interactive_menu: {e}, using mock data")
                     interactive_comp = create_category_selection_list()
+                finally:
+                    await menu_adapter.close()
 
                 success = await send_response(
                     from_number, response_message, "interactive_list",
