@@ -189,9 +189,9 @@ class CartService:
             Formatted cart summary string
         """
         if cart.is_empty:
-            return "🛒 Your cart is empty"
+            return "🛒 Votre panier est vide"
 
-        lines = ["🛒 *Your Cart:*\n"]
+        lines = ["🛒 *Votre panier:*\n"]
 
         for item in cart.items:
             size_text = f" ({item.customization.size})" if item.customization and item.customization.size else ""
@@ -203,8 +203,8 @@ class CartService:
                 f"• {item.quantity}x {item.name}{size_text} - ${item.item_total:.2f}{extras_text}"
             )
 
-        lines.append(f"\n*Subtotal:* ${cart.subtotal:.2f}")
-        lines.append(f"*Items:* {cart.item_count}")
+        lines.append(f"\n*Sous Total:* ${cart.subtotal:.2f}")
+        lines.append(f"*Articles:* {cart.item_count}")
 
         return "\n".join(lines)
 
