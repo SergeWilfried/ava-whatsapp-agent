@@ -20,6 +20,7 @@ from ai_companion.graph import cart_nodes
 from ai_companion.interfaces.whatsapp.interactive_components_v2 import (
     create_category_selection_list,
     create_button_component,
+    create_product_list,
 )
 # Legacy imports for backward compatibility (will be migrated)
 from ai_companion.interfaces.whatsapp.interactive_components import (
@@ -235,30 +236,21 @@ async def whatsapp_handler(request: Request) -> Response:
                                 category_name = category
 
                             if products:
-                                # Prepare items with automatic images and WhatsApp deep links
-                                # Using hardcoded WhatsApp number for deep links
-                                menu_items = prepare_menu_items_for_carousel(
+                                # Create interactive list with products
+                                product_list = create_product_list(
                                     products,
                                     category_name,
-                                    whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
-                                    use_whatsapp_deep_link=True  # Enable deep links
+                                    header_text=f"{category_name} Menu"
                                 )
 
-                                # Create beautiful carousel with images
-                                carousel = create_restaurant_menu_carousel(
-                                    menu_items,
-                                    body_text=f"Check out our {category_name}! 😋 Swipe to browse",
-                                    button_text="View"
-                                )
-
-                                # Send carousel
+                                # Send interactive list
                                 success = await send_response(
                                     from_number,
-                                    "",  # Body text is in carousel
-                                    "interactive_carousel",
+                                    "",  # Body text is in list component
+                                    "interactive_list",
                                     phone_number_id=phone_number_id,
                                     whatsapp_token=whatsapp_token,
-                                    interactive_component=carousel
+                                    interactive_component=product_list
                                 )
 
                                 # Update state with category
@@ -267,32 +259,7 @@ async def whatsapp_handler(request: Request) -> Response:
                                     values={"selected_category": category}
                                 )
 
-                                # Now send follow-up buttons for cart actions (using API product IDs)
-                                button_list = []
-                                if len(products) > 0:
-                                    product_id = products[0].get("id")
-                                    button_list.append({"id": f"add_product_{product_id}", "title": f"Add {menu_items[0]['name'][:15]}"})
-                                if len(products) > 1:
-                                    product_id = products[1].get("id")
-                                    button_list.append({"id": f"add_product_{product_id}", "title": f"Add {menu_items[1]['name'][:15]}"})
-                                button_list.append({"id": "view_cart", "title": "🛒 View Cart"})
-
-                                buttons = create_button_component(
-                                    f"Which {category_name.rstrip('s')} would you like to add to your cart?",
-                                    button_list[:3]  # Max 3 buttons
-                                )
-
-                                # Send action buttons after a brief moment
-                                await send_response(
-                                    from_number,
-                                    "Select an item to add to your cart:",
-                                    "interactive_button",
-                                    phone_number_id=phone_number_id,
-                                    whatsapp_token=whatsapp_token,
-                                    interactive_component=buttons
-                                )
-
-                                return Response(content="Category carousel sent", status_code=200)
+                                return Response(content="Category product list sent", status_code=200)
                             else:
                                 # No products found, send error
                                 await send_response(

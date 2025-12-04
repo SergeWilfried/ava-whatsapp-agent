@@ -124,6 +124,64 @@ def create_list_component(
 # ============================================
 
 
+def create_product_list(
+    products: List[Dict],
+    category_name: str,
+    header_text: Optional[str] = None,
+) -> Dict:
+    """Create an interactive list to display products in a category.
+
+    Args:
+        products: List of product dicts with id, name, description, basePrice
+        category_name: Name of the category
+        header_text: Optional header text
+
+    Returns:
+        Interactive list component
+
+    Example:
+        create_product_list(
+            [
+                {"id": "prod001", "name": "Bissap", "basePrice": 19.99, "description": "Drink"},
+                {"id": "prod002", "name": "Eau Laafi", "basePrice": 500, "description": "Water"}
+            ],
+            "Drinks"
+        )
+    """
+    # Create rows from products (max 10 rows per WhatsApp limit)
+    rows = []
+    for product in products[:10]:  # Limit to 10 products
+        product_id = product.get("id", "")
+        product_name = product.get("name", "Unknown Item")
+        price = product.get("basePrice") or product.get("price", 0)
+        description = product.get("description", "")
+
+        # Format price
+        price_str = f"${price:.2f}" if price < 1000 else f"${price:.0f}"
+
+        rows.append({
+            "id": f"add_product_{product_id}",
+            "title": f"{product_name} - {price_str}",
+            "description": description[:72] if description else f"Price: {price_str}"
+        })
+
+    # Create single section with all products
+    sections = [
+        {
+            "title": category_name[:24],
+            "rows": rows
+        }
+    ]
+
+    return create_list_component(
+        body_text=f"Choose from our {category_name}:",
+        sections=sections,
+        button_text="Select Item",
+        header_text=header_text,
+        footer_text="Tap to add to cart"
+    )
+
+
 def create_size_selection_buttons(
     item_name: str,
     base_price: float = None,
