@@ -136,10 +136,11 @@ def prepare_menu_items_for_carousel(
 
     for idx, item in enumerate(menu_items):
         # Get image URL with fallback
+        item_name = item.get("name", "Unknown Item")
         image_url = get_menu_item_image_url(
-            item_name=item["name"],
+            item_name=item_name,
             category=category,
-            custom_url=item.get("image_url")  # Use if already in menu data
+            custom_url=item.get("imageUrl") or item.get("image_url")  # API uses imageUrl
         )
 
         # Generate order URL
@@ -149,13 +150,18 @@ def prepare_menu_items_for_carousel(
             order_url = f"https://wa.me/{whatsapp_number}?text=add_{category}_{idx}"
         else:
             # Regular URL (external website)
-            item_slug = item["name"].lower().replace(" ", "-")
+            item_name = item.get("name", "item")
+            item_slug = item_name.lower().replace(" ", "-")
             order_url = f"{base_order_url}/{category}/{item_slug}"
 
+        # Handle both API format (basePrice) and legacy format (price)
+        # API returns basePrice, but some legacy code may use price
+        price = item.get("basePrice") or item.get("price", 0)
+
         prepared_items.append({
-            "name": item["name"],
+            "name": item.get("name", "Unknown Item"),
             "description": item.get("description", ""),
-            "price": item["price"],
+            "price": price,
             "image_url": image_url,
             "order_url": order_url,
             "category": category,
