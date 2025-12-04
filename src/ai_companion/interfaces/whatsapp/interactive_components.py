@@ -339,11 +339,11 @@ def create_item_added_buttons(item_name: str, cart_total: float, item_count: int
     return create_button_component(
         f"Added {item_name} to your cart!",
         [
-            {"id": "continue_shopping", "title": "➕ Add More"},
-            {"id": "view_cart", "title": "🛒 View Cart"},
-            {"id": "checkout", "title": "✅ Checkout"}
+            {"id": "continue_shopping", "title": "➕ Ajouter"},
+            {"id": "view_cart", "title": "🛒 Voir Mon Panier"},
+            {"id": "checkout", "title": "✅ Commander"}
         ],
-        footer_text=f"{item_count} items • ${cart_total:.2f}"
+        footer_text=f"{item_count} articles • ${cart_total:.2f}"
     )
 
 
@@ -358,11 +358,11 @@ def create_cart_view_buttons(cart_total: float, item_count: int) -> Dict:
         Interactive button component
     """
     return create_button_component(
-        f"Your cart has {item_count} item{'s' if item_count != 1 else ''}",
+        f"Your cart has {item_count} article{'s' if item_count != 1 else ''}",
         [
-            {"id": "checkout", "title": "✅ Checkout"},
-            {"id": "continue_shopping", "title": "➕ Add More"},
-            {"id": "clear_cart", "title": "🗑️ Clear Cart"}
+            {"id": "checkout", "title": "✅ Commander"},
+            {"id": "continue_shopping", "title": "➕ Ajouter"},
+            {"id": "clear_cart", "title": "🗑️ Vider le Panier"}
         ],
         header_text=f"Total: ${cart_total:.2f}"
     )
@@ -465,7 +465,7 @@ def create_delivery_method_buttons() -> Dict:
         Interactive button component
     """
     return create_button_component(
-        "How would you like to receive your order?",
+        "Comment souhaitez-vous recevoir votre commande ?",
         [
             {"id": "delivery", "title": "🚗 Livraison"},
             {"id": "pickup", "title": "🏃 Retrait"},
@@ -501,7 +501,7 @@ def create_payment_method_list() -> Dict:
     return create_list_component(
         "Choisissez votre mode de paiement :",
         sections,
-        button_text="Sélectionner le paiement",
+        button_text="Payer",
         header_text="Paiement"
     )
 
@@ -537,27 +537,27 @@ def create_order_details_message(order_data: Dict) -> Dict:
     payment_method = order_data.get("payment_method", "Cash on Delivery")
     delivery_method = order_data.get("delivery_method", "Delivery")
 
-    order_summary = f"""📦 Your Order:
+    order_summary = f"""📦 Votre Commande:
 
 {items_text}
 
-💰 Order Summary:
-Subtotal: ${subtotal:.2f}
-Tax: ${tax:.2f}
-Delivery: ${delivery_fee:.2f}
-─────────────
-Total: ${total:.2f}
+💰 Récapitulatif de la commande :
+Sous-total : ${subtotal:.2f} FCFA
+Taxes : ${tax:.2f} FCFA
+Livraison : ${delivery_fee:.2f} FCFA
+────────────────────────────────────
+Total : ${total:.2f} FCFA
 
-🚚 {delivery_method}
-💳 {payment_method}"""
+🚚 Livraison: {delivery_method}
+💳 Paiment: {payment_method}"""
 
     # Create confirmation buttons
     return create_button_component(
         order_summary,
         [
-            {"id": "confirm_order", "title": "✅ Confirm Order"},
-            {"id": "edit_order", "title": "✏️ Edit"},
-            {"id": "cancel_order", "title": "❌ Cancel"}
+            {"id": "confirm_order", "title": "✅ Confirmer"},
+            {"id": "edit_order", "title": "✏️ Modifier"},
+            {"id": "cancel_order", "title": "❌ Annuler"}
         ],
         header_text=f"Commande #{order_data.get('order_id', 'unknown')[:8]}",
         footer_text=f"Temps Est.: {order_data.get('estimated_time', '30-45 min')}"

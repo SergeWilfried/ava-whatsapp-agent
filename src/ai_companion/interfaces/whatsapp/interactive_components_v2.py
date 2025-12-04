@@ -174,9 +174,9 @@ def create_product_list(
     ]
 
     return create_list_component(
-        body_text=f"Choisissez parmi notre  {category_name}:",
+        body_text=f"Choisissez parmi nos  {category_name}:",
         sections=sections,
-        button_text="Sélectionner un article",
+        button_text="Parcourir le menu",
         header_text=header_text,
         footer_text="Taper pour ajouter au panier"
     )

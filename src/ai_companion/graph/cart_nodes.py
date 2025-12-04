@@ -472,10 +472,10 @@ async def request_delivery_location_node(state: AICompanionState) -> Dict:
 
     # Create location request interactive component
     interactive_comp = create_location_request_component(
-        body_text="📍 Please share your delivery location so we can confirm delivery to your area.\n\n"
-                  "You can either:\n"
-                  "• Share your current location\n"
-                  "• Enter an address manually"
+        body_text="📍  Veuillez indiquer votre lieu de livraison afin que nous puissions confirmer la livraison dans votre région.\n\n"
+                  "Vous pouvez soit:\n"
+                  "• Partager votre position actuelle\n"
+                  "• Saisir une adresse manuellement"
     )
 
     return {
