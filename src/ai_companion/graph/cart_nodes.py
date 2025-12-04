@@ -365,15 +365,21 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
     elif "mobile" in last_message or "apple" in last_message or "google" in last_message:
         payment_method = PaymentMethod.MOBILE_PAYMENT.value
 
-    # Create order from cart
+    # Create order preview from cart
     delivery_method_str = state.get("delivery_method", DeliveryMethod.DELIVERY.value)
     delivery_method = DeliveryMethod(delivery_method_str)
+    delivery_address = state.get("delivery_address")
+    delivery_phone = state.get("delivery_phone")
+    customer_name = state.get("customer_name", "Customer")
 
-    order = cart_service.create_order_from_cart(
-        cart,
+    # Create order - ASYNC with V2 API support
+    order = await cart_service.create_order_from_cart(
+        cart=cart,
         delivery_method=delivery_method,
         payment_method=PaymentMethod(payment_method),
-        customer_name="Customer",  # Would get from user profile
+        customer_name=customer_name,
+        delivery_address=delivery_address,
+        delivery_phone=delivery_phone,
     )
 
     # Generate order details interactive message
@@ -391,7 +397,7 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
         "messages": AIMessage(content=f"Here's your order summary:"),
         "interactive_component": interactive_comp,
         "payment_method": payment_method,
-        "active_order_id": order.order_id,
+        "active_order_id": order.api_order_id or order.order_id,
         "order_stage": OrderStage.CONFIRMED.value
     }
 

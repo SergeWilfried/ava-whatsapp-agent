@@ -99,7 +99,14 @@ from ai_companion.interfaces.whatsapp.interactive_components import (
 )
 ```
 
-**Status:** Partially migrated (core components updated)
+**Updated Handlers (Async + V2):**
+- ✅ `add_to_cart_node()` - Async menu lookup, API presentations support
+- ✅ `handle_size_selection_node()` - API modifiers support in extras
+- ✅ `finalize_customization_node()` - Async add to cart with dual format support (V2 + legacy)
+- ✅ `handle_payment_method_node()` - Async order creation with delivery info
+- ✅ `confirm_order_node()` - Async order creation with V2 message formatting
+
+**Status:** ✅ Fully migrated (all async handlers updated)
 
 ### 2. whatsapp_response.py ✅
 
@@ -145,14 +152,16 @@ from ai_companion.interfaces.whatsapp.carousel_components import (
 - [x] Maintain backward compatibility with legacy
 
 ### In Progress 🔄
-- [ ] Update cart_nodes.py to use v2 order messages
-- [ ] Update cart_nodes.py to use async cart operations
 - [ ] Migrate remaining legacy components
 - [ ] Update example files to use v2
 
+### Completed (Phase 3) ✅
+- [x] Update cart_nodes.py to use v2 order messages
+- [x] Update cart_nodes.py to use async cart operations
+- [x] Update all cart operation handlers to async
+- [x] Replace legacy message builders with v2 formatters (order confirmation)
+
 ### Pending ⏳
-- [ ] Update all cart operation handlers to async
-- [ ] Replace legacy message builders with v2 formatters
 - [ ] Update webhook handlers to use v2 responses
 - [ ] Integration testing with v2 components
 - [ ] Remove legacy component usage completely
@@ -432,6 +441,7 @@ asyncio.run(test_v2_features())
 - [V2 Components Summary](./V2_COMPONENTS_SUMMARY.md) - Feature overview
 - [Quick Reference](./V2_QUICK_REFERENCE.md) - Code examples
 - [Phase 3 Implementation](./PHASE_3_IMPLEMENTATION.md) - Order creation
+- [Async Migration Complete](./ASYNC_MIGRATION_COMPLETE.md) - Handler async/await updates ✅
 
 ---
 
