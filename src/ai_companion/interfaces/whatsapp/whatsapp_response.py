@@ -773,7 +773,17 @@ async def whatsapp_handler(request: Request) -> Response:
                 )
             elif use_interactive_menu:
                 # Send category selection list (new flow)
-                interactive_comp = create_category_selection_list()
+                # Fetch categories from API (or use mock data as fallback)
+                menu_adapter = MenuAdapter()
+                try:
+                    menu_structure = await menu_adapter.get_menu_structure()
+                    categories = menu_structure.get("categories", [])
+                    logger.info(f"Fetched {len(categories)} categories via use_interactive_menu flag")
+                    interactive_comp = create_category_selection_list(categories)
+                except Exception as e:
+                    logger.error(f"Error fetching menu structure via use_interactive_menu: {e}, using mock data")
+                    interactive_comp = create_category_selection_list()
+
                 success = await send_response(
                     from_number, response_message, "interactive_list",
                     phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
