@@ -400,6 +400,10 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
     delivery_address = state.get("delivery_address")
     delivery_phone = state.get("delivery_phone")
     customer_name = state.get("customer_name", "Customer")
+    # Use WhatsApp phone number as fallback for delivery_phone
+    user_phone = state.get("user_phone")
+    if not delivery_phone and user_phone:
+        delivery_phone = user_phone
 
     # Create order - ASYNC with V2 API support
     order = await cart_service.create_order_from_cart(

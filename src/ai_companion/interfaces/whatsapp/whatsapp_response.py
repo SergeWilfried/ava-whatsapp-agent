@@ -200,7 +200,7 @@ async def whatsapp_handler(request: Request) -> Response:
                         return Response(content="Category list sent", status_code=200)
 
                     elif node_name == "view_category_carousel":
-                        # User selected a category - show items as carousel with images
+                        # User selected a category - show items as interactive list
                         # Handle both V2 (selected_category_id) and legacy (selected_category)
                         category_id = state_updates.get("selected_category_id")
                         category = state_updates.get("selected_category", "pizzas")
@@ -236,30 +236,21 @@ async def whatsapp_handler(request: Request) -> Response:
                                 category_name = category
 
                             if products:
-                                # Prepare items with automatic images and WhatsApp deep links
-                                # Using hardcoded WhatsApp number for deep links
-                                menu_items = prepare_menu_items_for_carousel(
+                                # Create interactive list with products
+                                product_list = create_product_list(
                                     products,
                                     category_name,
-                                    whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
-                                    use_whatsapp_deep_link=True  # Enable deep links
+                                    header_text=f"{category_name} Menu"
                                 )
 
-                                # Create beautiful carousel with images
-                                carousel = create_restaurant_menu_carousel(
-                                    menu_items,
-                                    body_text=f"Check out our {category_name}! 😋 Swipe to browse",
-                                    button_text="View"
-                                )
-
-                                # Send carousel
+                                # Send interactive list
                                 success = await send_response(
                                     from_number,
-                                    "",  # Body text is in carousel
-                                    "interactive_carousel",
+                                    "",
+                                    "interactive_list",
                                     phone_number_id=phone_number_id,
                                     whatsapp_token=whatsapp_token,
-                                    interactive_component=carousel
+                                    interactive_component=product_list
                                 )
 
                                 # Update state with category
@@ -268,32 +259,7 @@ async def whatsapp_handler(request: Request) -> Response:
                                     values={"selected_category": category}
                                 )
 
-                                # Now send follow-up buttons for cart actions (using API product IDs)
-                                button_list = []
-                                if len(products) > 0:
-                                    product_id = products[0].get("id")
-                                    button_list.append({"id": f"add_product_{product_id}", "title": f"Add {menu_items[0]['name'][:15]}"})
-                                if len(products) > 1:
-                                    product_id = products[1].get("id")
-                                    button_list.append({"id": f"add_product_{product_id}", "title": f"Add {menu_items[1]['name'][:15]}"})
-                                button_list.append({"id": "view_cart", "title": "🛒 View Cart"})
-
-                                buttons = create_button_component(
-                                    f"Which {category_name.rstrip('s')} would you like to add to your cart?",
-                                    button_list[:3]  # Max 3 buttons
-                                )
-
-                                # Send action buttons after a brief moment
-                                await send_response(
-                                    from_number,
-                                    "Select an item to add to your cart:",
-                                    "interactive_button",
-                                    phone_number_id=phone_number_id,
-                                    whatsapp_token=whatsapp_token,
-                                    interactive_component=buttons
-                                )
-
-                                return Response(content="Category carousel sent", status_code=200)
+                                return Response(content="Category product list sent", status_code=200)
                             else:
                                 # No products found, send error
                                 await send_response(
@@ -590,7 +556,7 @@ async def whatsapp_handler(request: Request) -> Response:
                     current_state_dict = dict(output_state.values) if output_state and output_state.values else {}
                     order_stage = current_state_dict.get("order_stage", "")
 
-                    # Update state with location data
+                    # Update state with location data and user phone
                     await graph.aupdate_state(
                         config={"configurable": {"thread_id": session_id}},
                         values={
@@ -600,7 +566,8 @@ async def whatsapp_handler(request: Request) -> Response:
                                 "address": address,
                                 "name": name
                             },
-                            "awaiting_location": False
+                            "awaiting_location": False,
+                            "user_phone": from_number
                         }
                     )
 
@@ -688,7 +655,7 @@ async def whatsapp_handler(request: Request) -> Response:
 
                         # Handle the cart node response
                         if node_name == "view_category_carousel":
-                            # User selected a category via deep link - show items as carousel
+                            # User selected a category via deep link - show items as interactive list
                             category = state_updates.get("selected_category", "pizzas")
                             category_id = state_updates.get("selected_category_id")
 
@@ -717,29 +684,21 @@ async def whatsapp_handler(request: Request) -> Response:
                                     products = selected_category.get("products", [])
                                     category_name = selected_category.get("name", category)
 
-                                    # Prepare items with automatic images and WhatsApp deep links
-                                    menu_items = prepare_menu_items_for_carousel(
+                                    # Create interactive list with products
+                                    product_list = create_product_list(
                                         products,
                                         category_name,
-                                        whatsapp_number="15551525021",  # Hardcoded phone number for carousel deep links
-                                        use_whatsapp_deep_link=True
+                                        header_text=f"{category_name} Menu"
                                     )
 
-                                    # Create carousel
-                                    carousel = create_restaurant_menu_carousel(
-                                        menu_items,
-                                        body_text=f"Check out our {category_name}! 😋 Swipe to browse",
-                                        button_text="View"
-                                    )
-
-                                    # Send carousel
+                                    # Send interactive list
                                     await send_response(
                                         from_number,
                                         "",
-                                        "interactive_carousel",
+                                        "interactive_list",
                                         phone_number_id=phone_number_id,
                                         whatsapp_token=whatsapp_token,
-                                        interactive_component=carousel
+                                        interactive_component=product_list
                                     )
                             except Exception as e:
                                 logger.error(f"Error fetching category products: {e}")
@@ -759,10 +718,12 @@ async def whatsapp_handler(request: Request) -> Response:
                                     values={"selected_category": category}
                                 )
 
-                                return Response(content="Category carousel sent from deep link", status_code=200)
+                                return Response(content="Category product list sent from deep link", status_code=200)
 
                         elif node_name == "add_to_cart":
                             # Item added to cart from deep link - update state and trigger cart flow
+                            # Add user phone to state_updates
+                            state_updates["user_phone"] = from_number
                             await graph.aupdate_state(
                                 config={"configurable": {"thread_id": session_id}},
                                 values=state_updates
@@ -825,7 +786,10 @@ async def whatsapp_handler(request: Request) -> Response:
                 async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
                     graph = graph_builder.compile(checkpointer=short_term_memory)
                     await graph.ainvoke(
-                        {"messages": [HumanMessage(content=content)]},
+                        {
+                            "messages": [HumanMessage(content=content)],
+                            "user_phone": from_number
+                        },
                         {"configurable": {"thread_id": session_id}},
                     )
 

@@ -29,6 +29,9 @@ class AICompanionState(MessagesState):
         # Location fields
         user_location (dict): User's shared location with latitude, longitude, address, name
         awaiting_location (bool): Flag indicating system is waiting for user to share location
+
+        # User information
+        user_phone (str): User's WhatsApp phone number
     """
 
     summary: str
@@ -53,3 +56,6 @@ class AICompanionState(MessagesState):
     # Location state
     user_location: Optional[Dict]
     awaiting_location: bool
+
+    # User information
+    user_phone: Optional[str]
