@@ -37,6 +37,19 @@ class MenuAdapter:
         if self._initialized:
             return
 
+        # Debug logging to trace configuration
+        logger.info("=" * 60)
+        logger.info("MenuAdapter initialization check:")
+        logger.info(f"  use_cartaai_api: {self.config.use_cartaai_api}")
+        logger.info(f"  menu_api_enabled: {self.config.menu_api_enabled}")
+        logger.info(f"  api_base_url: {self.config.api_base_url}")
+        logger.info(f"  subdomain: {self.config.subdomain}")
+        logger.info(f"  local_id: {self.config.local_id}")
+        logger.info(f"  api_key: {'SET' if self.config.api_key else 'NOT SET'}")
+        logger.info(f"  enable_api_logging: {self.config.enable_api_logging}")
+        logger.info(f"  enable_cache: {self.config.enable_cache}")
+        logger.info("=" * 60)
+
         if self.config.use_cartaai_api and self.config.menu_api_enabled:
             try:
                 # Validate configuration
@@ -112,12 +125,15 @@ class MenuAdapter:
             and self.config.menu_api_enabled
             and self._menu_service
         ):
+            logger.info(f"🔵 Using API to find menu item: {menu_item_id}")
             try:
                 return await self._find_menu_item_api(menu_item_id)
             except Exception as e:
                 logger.error(f"API error finding menu item: {e}, falling back to mock")
 
         # Fallback to mock data
+        logger.info(f"🟡 Using MOCK data to find menu item: {menu_item_id}")
+        logger.info(f"  Reason: use_cartaai_api={self.config.use_cartaai_api}, menu_api_enabled={self.config.menu_api_enabled}, menu_service={'SET' if self._menu_service else 'NOT SET'}")
         return self._find_menu_item_mock(menu_item_id)
 
     async def _find_menu_item_api(self, menu_item_id: str) -> Optional[Dict]:
@@ -300,12 +316,15 @@ class MenuAdapter:
             and self.config.menu_api_enabled
             and self._menu_service
         ):
+            logger.info("🔵 Using API to get menu structure")
             try:
                 return await self._menu_service.get_menu_structure()
             except Exception as e:
                 logger.error(f"API error getting menu structure: {e}")
 
         # Fallback to mock data
+        logger.info("🟡 Using MOCK data to get menu structure")
+        logger.info(f"  Reason: use_cartaai_api={self.config.use_cartaai_api}, menu_api_enabled={self.config.menu_api_enabled}, menu_service={'SET' if self._menu_service else 'NOT SET'}")
         return self._get_mock_menu_structure()
 
     def _get_mock_menu_structure(self) -> Dict:
