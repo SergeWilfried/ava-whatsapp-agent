@@ -151,6 +151,11 @@ async def whatsapp_handler(request: Request) -> Response:
                     output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
                     current_state_dict = dict(output_state.values) if output_state and output_state.values else {}
 
+                    # Always ensure user_phone is in state for cart operations
+                    if "user_phone" not in current_state_dict or not current_state_dict["user_phone"]:
+                        current_state_dict["user_phone"] = from_number
+                        logger.info(f"Setting user_phone in state: {from_number}")
+
                     # Process cart interaction
                     node_name, state_updates, text_repr = process_cart_interaction(
                         interaction_type,
@@ -285,8 +290,9 @@ async def whatsapp_handler(request: Request) -> Response:
                             await menu_adapter.close()
 
                     elif node_name == "add_to_cart":
-                        # Update state with selected item
+                        # Update state with selected item and user phone
                         current_state_dict.update(state_updates)
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.add_to_cart_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -316,6 +322,7 @@ async def whatsapp_handler(request: Request) -> Response:
                         return Response(content="Item added", status_code=200)
 
                     elif node_name == "view_cart":
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.view_cart_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -343,6 +350,7 @@ async def whatsapp_handler(request: Request) -> Response:
                         return Response(content="Cart viewed", status_code=200)
 
                     elif node_name == "checkout":
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.checkout_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -371,6 +379,7 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     elif node_name == "handle_size":
                         current_state_dict.update(state_updates)
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.handle_size_selection_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -400,6 +409,7 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     elif node_name == "handle_extras":
                         current_state_dict.update(state_updates)
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.handle_extras_selection_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -429,6 +439,7 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     elif node_name == "handle_delivery_method":
                         current_state_dict.update(state_updates)
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.handle_delivery_method_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -458,6 +469,7 @@ async def whatsapp_handler(request: Request) -> Response:
 
                     elif node_name == "handle_payment_method":
                         current_state_dict.update(state_updates)
+                        current_state_dict["user_phone"] = from_number
                         result = await cart_nodes.handle_payment_method_node(current_state_dict)
 
                         # Persist state updates back to graph
@@ -645,6 +657,11 @@ async def whatsapp_handler(request: Request) -> Response:
                         # Get current state
                         output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
                         current_state_dict = dict(output_state.values) if output_state and output_state.values else {}
+
+                        # Always ensure user_phone is in state for cart operations
+                        if "user_phone" not in current_state_dict or not current_state_dict["user_phone"]:
+                            current_state_dict["user_phone"] = from_number
+                            logger.info(f"Setting user_phone in state (deep link): {from_number}")
 
                         # Process as cart interaction (simulate interactive button)
                         node_name, state_updates, text_repr = process_cart_interaction(
