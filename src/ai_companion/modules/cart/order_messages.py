@@ -55,17 +55,17 @@ def format_order_confirmation(order: Order) -> str:
     lines.append("")
 
     # Pricing
-    lines.append(f"Subtotal: ${order.subtotal:.2f}")
+    lines.append(f"Sous Total: ${order.subtotal:.2f}")
 
     if order.delivery_fee > 0:
-        lines.append(f"Delivery: ${order.delivery_fee:.2f}")
+        lines.append(f"Livraison: ${order.delivery_fee:.2f}")
     elif order.discount_description:
-        lines.append(f"Delivery: FREE ✨")
+        lines.append(f"Livraison: Gratuit ✨")
 
-    lines.append(f"Tax: ${order.tax_amount:.2f}")
+    lines.append(f"Taxes: ${order.tax_amount:.2f}")
 
     if order.discount > 0:
-        lines.append(f"Discount: -${order.discount:.2f}")
+        lines.append(f"Rabais: -${order.discount:.2f}")
 
     lines.append(f"*Total: ${order.total:.2f}*")
 
@@ -73,35 +73,35 @@ def format_order_confirmation(order: Order) -> str:
 
     # Delivery info
     if order.delivery_method == DeliveryMethod.DELIVERY:
-        lines.append(f"🚚 *Delivery Address:*")
+        lines.append(f"🚚 *Adresse de livraison:*")
         lines.append(f"{order.delivery_address}")
 
         if order.estimated_ready_time:
             estimated_time = order.estimated_ready_time.strftime("%I:%M %p")
-            lines.append(f"\n⏰ Estimated delivery: {estimated_time}")
+            lines.append(f"\n⏰ Livraison estimée: {estimated_time}")
 
     elif order.delivery_method == DeliveryMethod.PICKUP:
-        lines.append(f"🏪 *Pickup*")
+        lines.append(f"🏪 *Retrait*")
 
         if order.estimated_ready_time:
             estimated_time = order.estimated_ready_time.strftime("%I:%M %p")
-            lines.append(f"\n⏰ Ready for pickup: {estimated_time}")
+            lines.append(f"\n⏰ Prêt pour enlèvement: {estimated_time}")
 
     # Payment method
     if order.payment_method:
         payment_name = order.payment_method.value.replace("_", " ").title()
-        lines.append(f"\n💳 Payment: {payment_name}")
+        lines.append(f"\n💳 Methode de paiement: {payment_name}")
 
     # Special instructions
     if order.special_instructions:
         lines.append(f"\n📝 Note: {order.special_instructions}")
 
     lines.append("")
-    lines.append("Thank you for your order! 🙏")
+    lines.append("Merci pour votre commande! 🙏")
 
     # Add API tracking info if available
     if order.api_order_id:
-        lines.append(f"\n_Track your order with ID: {order.api_order_id}_")
+        lines.append(f"\n_Suivez votre commande: {order.api_order_id}_")
 
     return "\n".join(lines)
 
