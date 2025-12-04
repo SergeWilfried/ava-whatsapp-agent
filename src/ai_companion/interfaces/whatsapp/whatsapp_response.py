@@ -17,12 +17,19 @@ from ai_companion.services.business_service_optimized import get_optimized_busin
 # Cart integration
 from ai_companion.interfaces.whatsapp.cart_handler import process_cart_interaction
 from ai_companion.graph import cart_nodes
+from ai_companion.interfaces.whatsapp.interactive_components_v2 import (
+    create_category_selection_list,
+    create_button_component,
+)
+# Legacy imports for backward compatibility (will be migrated)
 from ai_companion.interfaces.whatsapp.interactive_components import (
     create_menu_list_from_restaurant_menu,
     create_quick_actions_buttons,
-    create_button_component,
-    create_category_selection_list,
 )
+from ai_companion.interfaces.whatsapp.carousel_components_v2 import (
+    create_product_carousel,
+)
+# Legacy import (will be migrated)
 from ai_companion.interfaces.whatsapp.carousel_components import (
     create_restaurant_menu_carousel,
 )

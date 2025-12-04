@@ -4,24 +4,30 @@ from typing import Dict, Optional
 from langchain_core.messages import AIMessage
 from ai_companion.graph.state import AICompanionState
 from ai_companion.modules.cart import (
-    CartService,
     ShoppingCart,
     Order,
     OrderStage,
     DeliveryMethod,
     PaymentMethod,
 )
+# Use v2 cart service with API support
+from ai_companion.modules.cart.cart_service_v2 import CartService
+# Use v2 interactive components with API support
+from ai_companion.interfaces.whatsapp.interactive_components_v2 import (
+    create_size_selection_buttons,
+    create_extras_list,
+    create_modifiers_list,
+    create_category_selection_list,
+)
+# Legacy components (will be migrated to v2)
 from ai_companion.interfaces.whatsapp.interactive_components import (
     create_item_added_buttons,
     create_cart_view_buttons,
-    create_size_selection_buttons,
-    create_extras_list,
     create_delivery_method_buttons,
     create_payment_method_list,
     create_order_details_message,
     create_order_status_message,
     create_menu_list_from_restaurant_menu,
-    create_category_selection_list,
 )
 from ai_companion.core.schedules import RESTAURANT_MENU, RESTAURANT_INFO
 
@@ -68,8 +74,8 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
             "order_stage": OrderStage.BROWSING.value
         }
 
-    # Check if item needs customization (pizzas, burgers)
-    menu_item = cart_service.find_menu_item(menu_item_id)
+    # Check if item needs customization (pizzas, burgers) - ASYNC
+    menu_item = await cart_service.find_menu_item(menu_item_id)
     if not menu_item:
         return {
             "messages": AIMessage(content="Sorry, that item is not available right now."),
@@ -80,8 +86,20 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
 
     # Items that typically allow customization
     if category in ["pizzas", "burgers"]:
-        # Ask for size
-        interactive_comp = create_size_selection_buttons(menu_item["name"], menu_item["price"])
+        # Ask for size - use API presentations if available
+        presentations = menu_item.get("presentations")
+        if presentations:
+            interactive_comp = create_size_selection_buttons(
+                menu_item["name"],
+                presentations=presentations
+            )
+        else:
+            # Fallback to legacy pricing
+            interactive_comp = create_size_selection_buttons(
+                menu_item["name"],
+                base_price=menu_item.get("price", 0.0)
+            )
+
         return {
             "messages": AIMessage(content=f"Great choice! {menu_item['name']}"),
             "interactive_component": interactive_comp,
@@ -89,8 +107,8 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
             "current_item": menu_item
         }
     else:
-        # Add directly to cart without customization
-        success, message, cart_item = cart_service.add_item_to_cart(
+        # Add directly to cart without customization - ASYNC
+        success, message, cart_item = await cart_service.add_item_to_cart(
             cart, menu_item_id, quantity=1
         )
 
@@ -139,7 +157,17 @@ async def handle_size_selection_node(state: AICompanionState) -> Dict:
 
     # Ask about extras for pizzas and burgers
     if category in ["pizzas", "burgers"]:
-        interactive_comp = create_extras_list(category)
+        # Use API modifiers if available, otherwise fallback to legacy
+        modifiers = current_item.get("modifiers")
+        if modifiers:
+            interactive_comp = create_modifiers_list(
+                current_item.get("name", "item"),
+                modifiers=modifiers
+            )
+        else:
+            # Fallback to legacy extras
+            interactive_comp = create_extras_list(category=category)
+
         return {
             "messages": AIMessage(content=f"Perfect! Would you like to add any extras?"),
             "interactive_component": interactive_comp,
@@ -189,14 +217,18 @@ async def finalize_customization_node(state: AICompanionState) -> Dict:
 
     size = pending.get("size")
     extras = pending.get("extras", [])
+    presentation_id = pending.get("presentation_id")  # From V2 size selection
+    modifier_selections = pending.get("modifier_selections")  # From V2 modifiers
 
-    # Add to cart with customizations
-    success, message, cart_item = cart_service.add_item_to_cart(
-        cart,
-        menu_item_id,
+    # Add to cart with customizations - ASYNC with V2 support
+    success, message, cart_item = await cart_service.add_item_to_cart(
+        cart=cart,
+        menu_item_id=menu_item_id,
         quantity=1,
-        size=size,
-        extras=extras
+        size=size if not presentation_id else None,  # Legacy size
+        extras=extras if not modifier_selections else None,  # Legacy extras
+        presentation_id=presentation_id,  # V2 presentation
+        modifier_selections=modifier_selections,  # V2 modifiers
     )
 
     if success:
@@ -366,45 +398,52 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
 
 async def confirm_order_node(state: AICompanionState) -> Dict:
     """Confirm and finalize the order."""
+    from ai_companion.modules.cart import format_order_confirmation
+
     cart_service = CartService()
     cart = get_or_create_cart(state)
 
-    # Create final order
+    # Create final order - ASYNC with V2 API support
     delivery_method_str = state.get("delivery_method", DeliveryMethod.DELIVERY.value)
     payment_method_str = state.get("payment_method", PaymentMethod.CASH.value)
+    delivery_address = state.get("delivery_address")
+    delivery_phone = state.get("delivery_phone")
+    customer_name = state.get("customer_name", "Customer")
 
-    order = cart_service.create_order_from_cart(
-        cart,
+    order = await cart_service.create_order_from_cart(
+        cart=cart,
         delivery_method=DeliveryMethod(delivery_method_str),
         payment_method=PaymentMethod(payment_method_str),
-        customer_name="Customer",
+        customer_name=customer_name,
+        delivery_address=delivery_address,
+        delivery_phone=delivery_phone,
     )
 
     # Confirm order
     cart_service.confirm_order(order)
 
-    # Save order
+    # Save order (local backup)
     cart_service.save_order(order)
 
-    # Get status message
-    status_message = cart_service.get_order_status_message(order)
+    # Use V2 order confirmation message
+    confirmation_message = format_order_confirmation(order)
 
-    # Create order status interactive component
+    # Create order status interactive component (legacy)
     interactive_comp = create_order_status_message(
-        order.order_id,
+        order.api_order_number or order.order_id,  # Use API number if available
         order.status.value,
-        status_message
+        confirmation_message
     )
 
     # Clear cart after confirmation
     cart.clear()
 
     return {
-        "messages": AIMessage(content=f"✅ Order confirmed! {status_message}"),
+        "messages": AIMessage(content=confirmation_message),
         "interactive_component": interactive_comp,
         "shopping_cart": cart.to_dict(),
         "order_stage": OrderStage.CONFIRMED.value,
-        "active_order_id": order.order_id
+        "active_order_id": order.api_order_id or order.order_id
     }
 
 
