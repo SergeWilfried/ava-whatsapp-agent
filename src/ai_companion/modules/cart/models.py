@@ -26,6 +26,7 @@ class OrderStage(Enum):
     REVIEWING_CART = "reviewing_cart"
     CHECKOUT = "checkout"
     AWAITING_LOCATION = "awaiting_location"
+    AWAITING_PHONE = "awaiting_phone"
     PAYMENT = "payment"
     CONFIRMED = "confirmed"
 

@@ -409,7 +409,12 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
         delivery_phone = user_phone
         logger.info(f"Using user_phone as delivery_phone: {delivery_phone}")
     elif not delivery_phone:
-        logger.warning("No delivery_phone or user_phone available for order creation!")
+        logger.warning("No delivery_phone or user_phone available - requesting from user")
+        # Ask user for phone number
+        return {
+            "messages": [AIMessage(content="Pour finaliser votre commande, veuillez fournir votre numéro de téléphone s'il vous plaît. 📱")],
+            "order_stage": OrderStage.AWAITING_PHONE.value,
+        }
 
     # Create order - ASYNC with V2 API support
     order = await cart_service.create_order_from_cart(

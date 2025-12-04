@@ -802,6 +802,56 @@ async def whatsapp_handler(request: Request) -> Response:
 
                 async with AsyncSqliteSaver.from_conn_string(settings.SHORT_TERM_MEMORY_DB_PATH) as short_term_memory:
                     graph = graph_builder.compile(checkpointer=short_term_memory)
+
+                    # Check if we're waiting for phone number
+                    output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+                    current_state = dict(output_state.values) if output_state and output_state.values else {}
+                    order_stage = current_state.get("order_stage")
+
+                    if order_stage == OrderStage.AWAITING_PHONE.value:
+                        logger.info(f"Received phone number from user: {content}")
+                        # Store the phone number and proceed to retry payment
+                        await graph.aupdate_state(
+                            config={"configurable": {"thread_id": session_id}},
+                            values={
+                                "delivery_phone": content.strip(),
+                                "user_phone": from_number,
+                                "order_stage": OrderStage.PAYMENT.value
+                            }
+                        )
+
+                        # Re-invoke payment method handler to create the order
+                        await graph.ainvoke(
+                            {"messages": [HumanMessage(content="retry_payment")]},
+                            {"configurable": {"thread_id": session_id}},
+                        )
+
+                        # Get response
+                        output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
+                        response_message = output_state.values["messages"][-1].content
+                        interactive_comp = output_state.values.get("interactive_component")
+
+                        if interactive_comp:
+                            await send_response(
+                                from_number,
+                                response_message,
+                                "interactive_button",
+                                phone_number_id=phone_number_id,
+                                whatsapp_token=whatsapp_token,
+                                interactive_component=interactive_comp
+                            )
+                        else:
+                            await send_response(
+                                from_number,
+                                response_message,
+                                "text",
+                                phone_number_id=phone_number_id,
+                                whatsapp_token=whatsapp_token
+                            )
+
+                        return Response(content="Phone number received, order created", status_code=200)
+
+                    # Normal message processing
                     await graph.ainvoke(
                         {
                             "messages": [HumanMessage(content=content)],
