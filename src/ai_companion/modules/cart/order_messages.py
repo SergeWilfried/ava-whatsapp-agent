@@ -200,13 +200,13 @@ def format_order_summary(order: Order) -> str:
     lines.append(f"Total: ${order.total:.2f}")
 
     if order.delivery_method == DeliveryMethod.DELIVERY:
-        lines.append("Type: Delivery 🚚")
+        lines.append("Type: Livraison 🚚")
     elif order.delivery_method == DeliveryMethod.PICKUP:
-        lines.append("Type: Pickup 🏪")
+        lines.append("Type: Retrait 🏪")
 
     if order.estimated_ready_time:
         estimated_time = order.estimated_ready_time.strftime("%I:%M %p")
-        lines.append(f"Ready: {estimated_time}")
+        lines.append(f"Pret: {estimated_time}")
 
     return "\n".join(lines)
 

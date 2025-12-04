@@ -549,16 +549,9 @@ def create_order_details_message(order_data: Dict) -> Dict:
     delivery_method = order_data.get("delivery_method", "Livraison") # Translated default
 
     order_summary = f"""📦 Votre Commande :
-    order_summary = f"""📦 Votre Commande:
 
 {items_text}
 
-💰 Récapitulatif de la Commande :
-Sous-total : ${subtotal:.2f} FCFA
-Taxe : ${tax:.2f} FCFA
-Livraison : ${delivery_fee:.2f} FCFA
-────────────--------------------
-Total : ${total:.2f} FCFA
 💰 Récapitulatif de la commande :
 Sous-total : ${subtotal:.2f} FCFA
 Taxes : ${tax:.2f} FCFA
@@ -567,7 +560,7 @@ Livraison : ${delivery_fee:.2f} FCFA
 Total : ${total:.2f} FCFA
 
 🚚 Livraison: {delivery_method}
-💳 Paiment: {payment_method}"""
+💳 Paiement: {payment_method}"""
 
     # Create confirmation buttons
     return create_button_component(
@@ -576,16 +569,9 @@ Total : ${total:.2f} FCFA
             {"id": "confirm_order", "title": "✅ Confirmer Commande"}, # Translated
             {"id": "edit_order", "title": "✏️ Modifier"}, # Translated
             {"id": "cancel_order", "title": "❌ Annuler"} # Translated
-        order_summary,
-        [
-            {"id": "confirm_order", "title": "✅ Confirmer"},
-            {"id": "edit_order", "title": "✏️ Modifier"},
-            {"id": "cancel_order", "title": "❌ Annuler"}
         ],
         header_text=f"Commande n°{order_data.get('order_id', 'inconnu')[:8]}", # Translated
         footer_text=f"Temps estimé : {order_data.get('estimated_time', '30-45 min')}" # Translated
-        header_text=f"Commande #{order_data.get('order_id', 'unknown')[:8]}",
-        footer_text=f"Temps Est.: {order_data.get('estimated_time', '30-45 min')}"
     )
 
 def create_category_selection_list() -> Dict:
