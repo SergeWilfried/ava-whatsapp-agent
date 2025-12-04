@@ -248,7 +248,7 @@ def create_category_menu_buttons(available_categories: List[str] = None) -> Dict
     return create_button_component(
         "What would you like to browse?",
         buttons,
-        header_text="Menu Categories"
+        header_text="Catégories du menu"
     )
 
 
@@ -361,11 +361,14 @@ def create_cart_view_buttons(cart_total: float, item_count: int) -> Dict:
         Interactive button component
     """
     return create_button_component(
-        f"Your cart has {item_count} item{'s' if item_count != 1 else ''}",
+        f"Votre panier a {item_count} article{'s' if item_count != 1 else ''}",
         [
             {"id": "checkout", "title": "✅ Payer"},
             {"id": "continue_shopping", "title": "➕ Ajouter Plus"},
             {"id": "clear_cart", "title": "🗑️ Clear Cart"}
+            {"id": "checkout", "title": "✅ Commander"},
+            {"id": "continue_shopping", "title": "➕ Ajouter"},
+            {"id": "clear_cart", "title": "🗑️ Vider le Panier"}
         ],
         header_text=f"Total: ${cart_total:.2f}"
     )
@@ -457,7 +460,7 @@ def create_extras_list(category: str = "pizza") -> Dict:
         "Customize your order with extras:",
         sections,
         button_text="Add Extras",
-        footer_text="Appuyez pour ajouter au panieradd, or skip to continue"
+        footer_text="Tap to add, or skip to continue"
     )
 
 
@@ -468,13 +471,13 @@ def create_delivery_method_buttons() -> Dict:
         Interactive button component
     """
     return create_button_component(
-        "How would you like to receive your order?",
+        "Comment souhaitez-vous recevoir votre commande ?",
         [
-            {"id": "delivery", "title": "🚗 Delivery"},
+            {"id": "delivery", "title": "🚗 Livraison"},
             {"id": "pickup", "title": "🏃 Retrait"},
             {"id": "dine_in", "title": "🍽️ Sur Place"}
         ],
-        header_text="Delivery Method"
+        header_text="Methode de Livraison"
     )
 
 
@@ -486,17 +489,18 @@ def create_payment_method_list() -> Dict:
     """
     sections = [
         {
-            "title": "💳 Payer Maintenant", # Translated
+            "title": "💳 Payer maintenant",
             "rows": [
-                {"id": "credit_card", "title": "Carte de Crédit", "description": "Visa, Mastercard, Amex"}, # Translated
-                {"id": "debit_card", "title": "Carte de Débit", "description": "Carte bancaire"}, # Translated
-                {"id": "mobile_payment", "title": "Paiement Mobile", "description": "Apple Pay, Google Pay"} # Translated
+                {"id": "credit_card", "title": "Carte Bancaire", "description": "Visa, Mastercard, Amex"},
+                {"id": "debit_card", "title": "Wave", "description": "Wave Mobile Money"},
+                {"id": "p2p", "title": "PII", "description": "P2P"},
+                {"id": "mobile_payment", "title": "Mobile Money", "description": "Orange Money, MoMo"}
             ]
         },
         {
-            "title": "💵 Payer Plus Tard", # Translated
+            "title": "💵 Cash",
             "rows": [
-                {"id": "cash", "title": "Paiement à la Livraison", "description": "Payez à la réception"} # Translated
+                {"id": "cash", "title": "Paiement à la livraison", "description": "Payez à la réception"}
             ]
         }
     ]
@@ -506,6 +510,10 @@ def create_payment_method_list() -> Dict:
         sections=sections,
         button_text="Sélectionner Paiement", # Translated
         header_text="Paiement" # Translated
+        "Choisissez votre mode de paiement :",
+        sections,
+        button_text="Payer",
+        header_text="Paiement"
     )
 
 
@@ -541,6 +549,7 @@ def create_order_details_message(order_data: Dict) -> Dict:
     delivery_method = order_data.get("delivery_method", "Livraison") # Translated default
 
     order_summary = f"""📦 Votre Commande :
+    order_summary = f"""📦 Votre Commande:
 
 {items_text}
 
@@ -550,9 +559,15 @@ Taxe : ${tax:.2f} FCFA
 Livraison : ${delivery_fee:.2f} FCFA
 ────────────--------------------
 Total : ${total:.2f} FCFA
+💰 Récapitulatif de la commande :
+Sous-total : ${subtotal:.2f} FCFA
+Taxes : ${tax:.2f} FCFA
+Livraison : ${delivery_fee:.2f} FCFA
+────────────────────────────────────
+Total : ${total:.2f} FCFA
 
-🚚 {delivery_method}
-💳 {payment_method}"""
+🚚 Livraison: {delivery_method}
+💳 Paiment: {payment_method}"""
 
     # Create confirmation buttons
     return create_button_component(
@@ -561,9 +576,16 @@ Total : ${total:.2f} FCFA
             {"id": "confirm_order", "title": "✅ Confirmer Commande"}, # Translated
             {"id": "edit_order", "title": "✏️ Modifier"}, # Translated
             {"id": "cancel_order", "title": "❌ Annuler"} # Translated
+        order_summary,
+        [
+            {"id": "confirm_order", "title": "✅ Confirmer"},
+            {"id": "edit_order", "title": "✏️ Modifier"},
+            {"id": "cancel_order", "title": "❌ Annuler"}
         ],
         header_text=f"Commande n°{order_data.get('order_id', 'inconnu')[:8]}", # Translated
         footer_text=f"Temps estimé : {order_data.get('estimated_time', '30-45 min')}" # Translated
+        header_text=f"Commande #{order_data.get('order_id', 'unknown')[:8]}",
+        footer_text=f"Temps Est.: {order_data.get('estimated_time', '30-45 min')}"
     )
 
 def create_category_selection_list() -> Dict:
@@ -603,6 +625,7 @@ def create_category_selection_list() -> Dict:
 
     return create_list_component(
         body_text="Bonjour, Que souhaitez-vous commander aujourdhui ? 😋",
+        body_text="Que souhaitez-vous commander aujourdhui ? 😋",
         sections=[{
             "title": "Menu Categories",
             "rows": rows
@@ -610,6 +633,9 @@ def create_category_selection_list() -> Dict:
         button_text="Parcourir Menu",
         header_text="Notre Menu",
         footer_text="Appuyez pour voir les articles"
+        button_text="Parcourir le menu",
+        header_text="Notre Menu",
+        footer_text="Tap to see items"
     )
 
 
@@ -643,10 +669,10 @@ def create_order_status_message(order_id: str, status: str, message: str) -> Dic
     return create_button_component(
         f"{emoji} {message}",
         [
-            {"id": "track_order", "title": "📍 Track Order"},
-            {"id": "contact_support", "title": "💬 Contact Us"},
-            {"id": "new_order", "title": "🛒 New Order"}
+            {"id": "track_order", "title": "📍 Suivre Commande"},
+            {"id": "contact_support", "title": "💬 Nous Contacter"},
+            {"id": "new_order", "title": "🛒 Nouvelle Commande"}
         ],
-        header_text=f"Order #{order_id[:8]}",
+        header_text=f"Commande #{order_id[:8]}",
         footer_text=f"Status: {status.replace('_', ' ').title()}"
     )

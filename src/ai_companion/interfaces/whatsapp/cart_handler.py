@@ -237,7 +237,7 @@ class CartInteractionHandler:
 
         # Delivery method
         if interaction_id in ["delivery", "pickup", "dine_in"]:
-            return "handle_delivery_method", {}
+            return "handle_delivery_method", {"selected_delivery_method": interaction_id}
 
         # Payment method
         if interaction_id in ["credit_card", "debit_card", "mobile_payment", "cash"]:

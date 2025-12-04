@@ -16,17 +16,7 @@ def create_button_component(
     header_text: Optional[str] = None,
     footer_text: Optional[str] = None,
 ) -> Dict:
-    """Create a button interactive component (up to 3 buttons).
-
-    Args:
-        body_text: Main message text (required, max 1024 chars)
-        buttons: List of button dicts with 'id' and 'title' keys (max 3 buttons)
-        header_text: Optional header text (max 60 chars)
-        footer_text: Optional footer text (max 60 chars)
-
-    Returns:
-        Interactive component dict ready for WhatsApp API
-    """
+    """Create a button interactive component (up to 3 buttons)."""
     component = {"type": "button", "body": {"text": body_text[:1024]}}
 
     if header_text:
@@ -52,26 +42,11 @@ def create_button_component(
 def create_list_component(
     body_text: str,
     sections: List[Dict],
-    button_text: str = "Voir le Menu",
+    button_text: str = "Afficher le menu",
     header_text: Optional[str] = None,
     footer_text: Optional[str] = None,
 ) -> Dict:
-    """Create a list interactive component.
-
-    IMPORTANT: WhatsApp limits list messages to:
-    - Up to 10 sections
-    - Up to 10 rows TOTAL across ALL sections combined
-
-    Args:
-        body_text: Main message text
-        sections: List of section dicts
-        button_text: Text for the list button
-        header_text: Optional header text
-        footer_text: Optional footer text
-
-    Returns:
-        Interactive component dict
-    """
+    """Create a list interactive component."""
     component = {"type": "list", "body": {"text": body_text[:1024]}}
 
     if header_text:
@@ -124,133 +99,44 @@ def create_list_component(
 # ============================================
 
 
-def create_product_list(
-    products: List[Dict],
-    category_name: str,
-    header_text: Optional[str] = None,
-) -> Dict:
-    """Create an interactive list to display products in a category.
-
-    Args:
-        products: List of product dicts with id, name, description, basePrice
-        category_name: Name of the category
-        header_text: Optional header text
-
-    Returns:
-        Interactive list component
-
-    Example:
-        create_product_list(
-            [
-                {"id": "prod001", "name": "Bissap", "basePrice": 19.99, "description": "Drink"},
-                {"id": "prod002", "name": "Eau Laafi", "basePrice": 500, "description": "Water"}
-            ],
-            "Drinks"
-        )
-    """
-    # Create rows from products (max 10 rows per WhatsApp limit)
-    rows = []
-    for product in products[:10]:  # Limit to 10 products
-        product_id = product.get("id", "")
-        product_name = product.get("name", "Unknown Item")
-        price = product.get("basePrice") or product.get("price", 0)
-        description = product.get("description", "")
-
-        # Format price
-        price_str = f"${price:.2f}" if price < 1000 else f"${price:.0f}"
-
-        rows.append({
-            "id": f"add_product_{product_id}",
-            "title": f"{product_name} - {price_str}",
-            "description": description[:72] if description else f"Price: {price_str}"
-        })
-
-    # Create single section with all products
-    sections = [
-        {
-            "title": category_name[:24],
-            "rows": rows
-        }
-    ]
-
-    return create_list_component(
-        body_text=f"Choisissez parmi nos  {category_name}:",
-        sections=sections,
-        button_text="Parcourir le menu",
-        header_text=header_text,
-        footer_text="Taper pour ajouter au panier"
-    )
-
-
 def create_size_selection_buttons(
     item_name: str,
     base_price: float = None,
     presentations: Optional[List[Dict]] = None,
 ) -> Dict:
-    """Create size selection buttons for menu items.
-
-    Supports both legacy (base_price with multipliers) and API presentations.
-
-    Args:
-        item_name: Name of the menu item
-        base_price: Base price (legacy mode - medium size)
-        presentations: API presentations list with {_id, name, price}
-
-    Returns:
-        Interactive button component
-
-    Example with API presentations:
-        create_size_selection_buttons(
-            "Classic Burger",
-            presentations=[
-                {"_id": "pres001", "name": "Regular", "price": 15.99},
-                {"_id": "pres002", "name": "Large", "price": 18.99}
-            ]
-        )
-
-    Example with legacy pricing:
-        create_size_selection_buttons("Classic Burger", base_price=15.99)
-    """
+    """Create size selection buttons for menu items."""
     buttons = []
 
     if presentations and len(presentations) > 0:
-        # Use API presentations
-        logger.debug(f"Using API presentations: {len(presentations)} options")
-
         for pres in presentations[:3]:  # Max 3 buttons
             pres_id = pres.get("_id")
-            pres_name = pres.get("name", "Unknown")
+            pres_name = pres.get("name", "Inconnu")
             pres_price = pres.get("price", 0.0)
 
             buttons.append(
                 {
                     "id": f"size_{pres_id}",
-                    "title": f"{pres_name} ${pres_price:.2f}",
+                    "title": f"{pres_name} {pres_price:.2f}€",
                 }
             )
 
     elif base_price is not None:
-        # Use legacy size multipliers
-        logger.debug("Using legacy size multipliers")
-
         small_price = base_price * 0.8
         large_price = base_price * 1.3
 
         buttons = [
-            {"id": "size_small", "title": f"Petit ${small_price:.2f}"},
-            {"id": "size_medium", "title": f"Moyen ${base_price:.2f}"},
-            {"id": "size_large", "title": f"Grand ${large_price:.2f}"},
+            {"id": "size_small", "title": f"Petit {small_price:.2f}€"},
+            {"id": "size_medium", "title": f"Moyen {base_price:.2f}€"},
+            {"id": "size_large", "title": f"Grand {large_price:.2f}€"},
         ]
 
     else:
-        # No size selection available
-        logger.warning("No presentations or base_price provided, showing single option")
-        buttons = [{"id": "size_default", "title": "Taille Standard"}]
+        buttons = [{"id": "size_default", "title": "Taille standard"}]
 
     return create_button_component(
-        f"Choisissez votre taille pour {item_name}:",
+        f"Choisissez votre taille pour {item_name} :",
         buttons,
-        header_text="🍽️ Sélection de la taille",
+        header_text="🍽️ Sélection de taille",
     )
 
 
@@ -264,41 +150,10 @@ def create_extras_list(
     modifiers: Optional[List[Dict]] = None,
     max_selections: int = 10,
 ) -> Dict:
-    """Create list of extras/toppings for customization.
-
-    Supports both legacy (hardcoded extras) and API modifiers.
-
-    Args:
-        category: Menu item category (legacy mode)
-        modifiers: API modifiers list with {_id, name, options[]}
-        max_selections: Maximum selections allowed
-
-    Returns:
-        Interactive list component
-
-    Example with API modifiers:
-        create_extras_list(
-            modifiers=[
-                {
-                    "_id": "mod001",
-                    "name": "Toppings",
-                    "options": [
-                        {"_id": "opt001", "name": "Extra Cheese", "price": 2.00},
-                        {"_id": "opt002", "name": "Bacon", "price": 3.00}
-                    ]
-                }
-            ]
-        )
-
-    Example with legacy:
-        create_extras_list(category="pizza")
-    """
+    """Create list of extras/toppings for customization."""
     sections = []
 
     if modifiers and len(modifiers) > 0:
-        # Use API modifiers
-        logger.debug(f"Using API modifiers: {len(modifiers)} groups")
-
         for modifier in modifiers:
             modifier_name = modifier.get("name", "Options")
             options = modifier.get("options", [])
@@ -306,15 +161,13 @@ def create_extras_list(
             if not options:
                 continue
 
-            # Create rows for this modifier group
             rows = []
-            for option in options[:10]:  # Limit to 10 options per modifier
+            for option in options[:10]:
                 option_id = option.get("_id")
-                option_name = option.get("name", "Unknown")
+                option_name = option.get("name", "Inconnu")
                 option_price = option.get("price", 0.0)
 
-                # Format price display
-                price_display = f"+${option_price:.2f}" if option_price > 0 else "Free"
+                price_display = f"+{option_price:.2f}€" if option_price > 0 else "Gratuit"
 
                 rows.append(
                     {
@@ -328,41 +181,23 @@ def create_extras_list(
                 sections.append({"title": modifier_name[:24], "rows": rows})
 
     else:
-        # Use legacy hardcoded extras
-        logger.debug(f"Using legacy extras for category: {category}")
-
+        # Legacy extras remain English because they are product names
         if category == "pizza":
             sections = [
                 {
-                    "title": "🧀 Cheese & Protein",
+                    "title": "🧀 Fromages & Protéines",
                     "rows": [
-                        {
-                            "id": "extra_cheese",
-                            "title": "Extra Cheese",
-                            "description": "+$2.00",
-                        },
-                        {
-                            "id": "pepperoni",
-                            "title": "Pepperoni",
-                            "description": "+$2.50",
-                        },
-                        {
-                            "id": "chicken",
-                            "title": "Grilled Chicken",
-                            "description": "+$3.00",
-                        },
-                        {"id": "bacon", "title": "Bacon", "description": "+$2.50"},
+                        {"id": "extra_cheese", "title": "Extra Cheese", "description": "+2.00€"},
+                        {"id": "pepperoni", "title": "Pepperoni", "description": "+2.50€"},
+                        {"id": "chicken", "title": "Grilled Chicken", "description": "+3.00€"},
+                        {"id": "bacon", "title": "Bacon", "description": "+2.50€"},
                     ],
                 },
                 {
-                    "title": "🥬 Vegetables",
+                    "title": "🥬 Légumes",
                     "rows": [
-                        {
-                            "id": "mushrooms",
-                            "title": "Mushrooms",
-                            "description": "+$1.50",
-                        },
-                        {"id": "olives", "title": "Olives", "description": "+$1.00"},
+                        {"id": "mushrooms", "title": "Mushrooms", "description": "+1.50€"},
+                        {"id": "olives", "title": "Olives", "description": "+1.00€"},
                     ],
                 },
             ]
@@ -372,62 +207,42 @@ def create_extras_list(
                 {
                     "title": "🍔 Extras",
                     "rows": [
-                        {
-                            "id": "extra_cheese",
-                            "title": "Extra Cheese",
-                            "description": "+$2.00",
-                        },
-                        {"id": "bacon", "title": "Bacon", "description": "+$2.50"},
-                        {
-                            "id": "mushrooms",
-                            "title": "Mushrooms",
-                            "description": "+$1.50",
-                        },
+                        {"id": "extra_cheese", "title": "Extra Cheese", "description": "+2.00€"},
+                        {"id": "bacon", "title": "Bacon", "description": "+2.50€"},
+                        {"id": "mushrooms", "title": "Mushrooms", "description": "+1.50€"},
                     ],
                 },
             ]
 
         else:
-            # Generic extras
             sections = [
                 {
-                    "title": "➕ Add-ons",
+                    "title": "➕ Suppléments",
                     "rows": [
-                        {
-                            "id": "extra_toppings",
-                            "title": "Extra Toppings",
-                            "description": "+$1.50",
-                        }
+                        {"id": "extra_toppings", "title": "Extra Toppings", "description": "+1.50€"}
                     ],
                 }
             ]
 
-    # Add "No extras" option
+    # "No extras" → "Sans extra"
     if sections:
-        # Add to first section or create new one
         if len(sections[0].get("rows", [])) < 10:
             sections[0]["rows"].insert(
-                0, {"id": "no_extras", "title": "No extras", "description": "$0.00"}
+                0, {"id": "no_extras", "title": "Sans extra", "description": "0.00€"}
             )
         else:
             sections.insert(
                 0,
                 {
                     "title": "Options",
-                    "rows": [
-                        {
-                            "id": "no_extras",
-                            "title": "Pas de suppléments",
-                            "description": "$0.00",
-                        }
-                    ],
+                    "rows": [{"id": "no_extras", "title": "Sans extra", "description": "0.00€"}],
                 },
             )
 
     return create_list_component(
-        f"Choisissez vos suppléments (jusqua to {max_selections}):",
+        f"Choisissez vos extras (jusqu'à {max_selections}) :",
         sections,
-        button_text="Ajouter Suppléments",
+        button_text="Ajouter",
         header_text="🎨 Personnaliser",
     )
 
@@ -435,19 +250,7 @@ def create_extras_list(
 def create_modifiers_list(
     item_name: str, modifiers: List[Dict], max_total_rows: int = 10
 ) -> Dict:
-    """Create interactive list for API modifiers with validation.
-
-    This is a more advanced version specifically for API modifiers that
-    respects min/max selection rules.
-
-    Args:
-        item_name: Name of the item being customized
-        modifiers: API modifiers list
-        max_total_rows: Maximum total rows to display (WhatsApp limit: 10)
-
-    Returns:
-        Interactive list component with modifier sections
-    """
+    """Create interactive list for API modifiers with validation."""
     sections = []
     total_rows = 0
 
@@ -463,9 +266,8 @@ def create_modifiers_list(
         if not options:
             continue
 
-        # Add requirement info to section title
         if min_selections > 0:
-            title_suffix = f" (Required)"
+            title_suffix = " (Obligatoire)"
         elif max_selections > 1:
             title_suffix = f" (Max {max_selections})"
         else:
@@ -473,16 +275,15 @@ def create_modifiers_list(
 
         section_title = f"{modifier_name}{title_suffix}"[:24]
 
-        # Create rows
         rows = []
         remaining_rows = max_total_rows - total_rows
 
         for option in options[:remaining_rows]:
             option_id = option.get("_id")
-            option_name = option.get("name", "Unknown")
+            option_name = option.get("name", "Inconnu")
             option_price = option.get("price", 0.0)
 
-            price_display = f"+${option_price:.2f}" if option_price > 0 else "Free"
+            price_display = f"+{option_price:.2f}€" if option_price > 0 else "Gratuit"
 
             rows.append(
                 {
@@ -497,13 +298,12 @@ def create_modifiers_list(
             total_rows += len(rows)
 
     if not sections:
-        # No modifiers, skip customization
         return None
 
     return create_list_component(
-        f"Personnaliser votre {item_name}:",
+        f"Personnalisez votre {item_name} :",
         sections,
-        button_text="poursuivre",
+        button_text="Continuer",
         header_text="🎨 Personnaliser la commande",
     )
 
@@ -514,70 +314,39 @@ def create_modifiers_list(
 
 
 def create_category_selection_list(categories: Optional[List[Dict]] = None) -> Dict:
-    """Create category selection list.
-
-    Supports both mock data and API categories.
-
-    Args:
-        categories: API categories list with {id, name, products[]}
-                   If None, uses mock categories
-
-    Returns:
-        Interactive list component
-
-    Example with API:
-        create_category_selection_list([
-            {"id": "cat001", "name": "Burgers", "products": [...]},
-            {"id": "cat002", "name": "Pizza", "products": [...]}
-        ])
-    """
+    """Create category selection list."""
     sections = []
 
     if categories:
-        # Use API categories
-        logger.debug(f"Using API categories: {len(categories)}")
-
         rows = []
         for category in categories[:10]:
             cat_id = category.get("id")
-            cat_name = category.get("name", "Unknown")
+            cat_name = category.get("name", "Inconnu")
             product_count = len(category.get("products", []))
 
-            # Add emoji based on category name
             emoji = _get_category_emoji(cat_name)
 
             rows.append(
                 {
                     "id": f"cat_{cat_id}",
                     "title": f"{emoji} {cat_name}"[:24],
-                    "description": f"{product_count} items",
+                    "description": f"{product_count} articles",
                 }
             )
 
         if rows:
-            sections = [{"title": "Menu Categories", "rows": rows}]
+            sections = [{"title": "Catégories du menu", "rows": rows}]
 
     else:
-        # Use mock categories (legacy)
-        logger.debug("Using mock categories")
-
         sections = [
             {
                 "title": "🍽️ Menu",
                 "rows": [
-                    {"id": "cat_pizzas", "title": "🍕 Pizzas", "description": "5 items"},
-                    {
-                        "id": "cat_burgers",
-                        "title": "🍔 Burgers",
-                        "description": "4 items",
-                    },
-                    {"id": "cat_sides", "title": "🍟 Sides", "description": "4 items"},
-                    {"id": "cat_drinks", "title": "🥤 Drinks", "description": "4 items"},
-                    {
-                        "id": "cat_desserts",
-                        "title": "🍰 Desserts",
-                        "description": "3 items",
-                    },
+                    {"id": "cat_pizzas", "title": "🍕 Pizzas", "description": "5 articles"},
+                    {"id": "cat_burgers", "title": "🍔 Burgers", "description": "4 articles"},
+                    {"id": "cat_sides", "title": "🍟 Accompagnements", "description": "4 articles"},
+                    {"id": "cat_drinks", "title": "🥤 Boissons", "description": "4 articles"},
+                    {"id": "cat_desserts", "title": "🍰 Desserts", "description": "3 articles"},
                 ],
             }
         ]
@@ -585,20 +354,13 @@ def create_category_selection_list(categories: Optional[List[Dict]] = None) -> D
     return create_list_component(
         "Que souhaitez-vous commander ? Consultez notre menu ci-dessous :",
         sections,
-        button_text="Voir le Menu",
-        header_text="🍽️ Notre Menu",
+        button_text="Afficher le menu",
+        header_text="🍽️ Bonjour, que souhaitez-vous commander ?",
     )
 
 
 def _get_category_emoji(category_name: str) -> str:
-    """Get emoji for category name.
-
-    Args:
-        category_name: Category name
-
-    Returns:
-        Emoji string
-    """
+    """Get emoji for category name."""
     name_lower = category_name.lower()
 
     emoji_map = {
@@ -622,7 +384,7 @@ def _get_category_emoji(category_name: str) -> str:
         if key in name_lower:
             return emoji
 
-    return "🍽️"  # Default
+    return "🍽️"
 
 
 # ============================================
@@ -631,26 +393,15 @@ def _get_category_emoji(category_name: str) -> str:
 
 
 def extract_modifier_selections(selected_ids: List[str]) -> Dict[str, List[str]]:
-    """Extract modifier selections from reply IDs.
-
-    Converts list of IDs like ["mod_mod001_opt001", "mod_mod001_opt002"]
-    to grouped dict: {"mod001": ["opt001", "opt002"]}
-
-    Args:
-        selected_ids: List of selected reply IDs
-
-    Returns:
-        Dict mapping modifier ID to list of option IDs
-    """
+    """Extract modifier selections from reply IDs."""
     selections = {}
 
     for reply_id in selected_ids:
         if reply_id.startswith("mod_"):
-            # Format: mod_{modifier_id}_{option_id}
             parts = reply_id.split("_")
             if len(parts) >= 3:
                 modifier_id = parts[1]
-                option_id = "_".join(parts[2:])  # Handle IDs with underscores
+                option_id = "_".join(parts[2:])
 
                 if modifier_id not in selections:
                     selections[modifier_id] = []
@@ -661,14 +412,7 @@ def extract_modifier_selections(selected_ids: List[str]) -> Dict[str, List[str]]
 
 
 def extract_presentation_id(reply_id: str) -> Optional[str]:
-    """Extract presentation ID from size selection reply.
-
-    Args:
-        reply_id: Reply ID from size selection (e.g., "size_pres001")
-
-    Returns:
-        Presentation ID or None
-    """
+    """Extract presentation ID from size selection reply."""
     if reply_id.startswith("size_"):
         return reply_id.replace("size_", "")
 

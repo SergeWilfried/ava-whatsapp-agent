@@ -319,28 +319,53 @@ async def checkout_node(state: AICompanionState) -> Dict:
 
 async def handle_delivery_method_node(state: AICompanionState) -> Dict:
     """Handle delivery method selection."""
-    last_message = state["messages"][-1].content.lower()
+    # Check if we have the button ID from the interactive component
+    selected_delivery_method = state.get("selected_delivery_method")
 
-    # Parse delivery method
-    if "delivery" in last_message:
-        delivery_method = DeliveryMethod.DELIVERY.value
+    if selected_delivery_method:
+        # Use button ID directly (more reliable than text parsing)
+        logger.info(f"Delivery method from button ID: {selected_delivery_method}")
 
-        # ALWAYS request location for delivery orders (don't reuse old location)
-        logger.info("Delivery selected, requesting fresh location for this order")
-        return await request_delivery_location_node(state)
+        if selected_delivery_method == "delivery":
+            delivery_method = DeliveryMethod.DELIVERY.value
+            # ALWAYS request location for delivery orders (don't reuse old location)
+            logger.info("Delivery selected, requesting fresh location for this order")
+            return await request_delivery_location_node(state)
 
-    elif "pickup" in last_message:
-        delivery_method = DeliveryMethod.PICKUP.value
-        next_message = f"Great! You can pick up from {RESTAURANT_INFO['address']}"
-    elif "dine" in last_message or "dine-in" in last_message:
-        delivery_method = DeliveryMethod.DINE_IN.value
-        next_message = "Wonderful! We'll have your table ready."
+        elif selected_delivery_method == "pickup":
+            delivery_method = DeliveryMethod.PICKUP.value
+            next_message = f"Great! You can pick up from {RESTAURANT_INFO['address']}"
+
+        elif selected_delivery_method == "dine_in":
+            delivery_method = DeliveryMethod.DINE_IN.value
+            next_message = "Wonderful! We'll have your table ready."
+
+        else:
+            # Unknown button ID, default to delivery
+            delivery_method = DeliveryMethod.DELIVERY.value
+            logger.warning(f"Unknown delivery method button ID: {selected_delivery_method}, defaulting to delivery")
+            return await request_delivery_location_node(state)
+
     else:
-        delivery_method = DeliveryMethod.DELIVERY.value
+        # Fallback: parse from text message (for backward compatibility or text input)
+        last_message = state["messages"][-1].content.lower()
+        logger.info(f"Delivery method from text parsing: {last_message}")
 
-        # ALWAYS request location for delivery orders (don't reuse old location)
-        logger.info("Delivery selected (default), requesting fresh location for this order")
-        return await request_delivery_location_node(state)
+        if "pickup" in last_message or "pick" in last_message:
+            delivery_method = DeliveryMethod.PICKUP.value
+            next_message = f"Great! You can pick up from {RESTAURANT_INFO['address']}"
+        elif "dine" in last_message or "dine-in" in last_message:
+            delivery_method = DeliveryMethod.DINE_IN.value
+            next_message = "Wonderful! We'll have your table ready."
+        elif "delivery" in last_message:
+            delivery_method = DeliveryMethod.DELIVERY.value
+            logger.info("Delivery selected, requesting fresh location for this order")
+            return await request_delivery_location_node(state)
+        else:
+            # Default to delivery
+            delivery_method = DeliveryMethod.DELIVERY.value
+            logger.info("Delivery selected (default), requesting fresh location for this order")
+            return await request_delivery_location_node(state)
 
     # Ask for payment method (only for pickup/dine-in)
     interactive_comp = create_payment_method_list()
