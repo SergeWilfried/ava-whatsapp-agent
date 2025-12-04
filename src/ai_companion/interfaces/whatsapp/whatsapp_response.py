@@ -832,56 +832,56 @@ async def whatsapp_handler(request: Request) -> Response:
                     # Get the workflow type and response from the state
                     output_state = await graph.aget_state(config={"configurable": {"thread_id": session_id}})
 
-                workflow = output_state.values.get("workflow", "conversation")
-                response_message = output_state.values["messages"][-1].content
-                use_interactive_menu = output_state.values.get("use_interactive_menu", False)
+                    workflow = output_state.values.get("workflow", "conversation")
+                    response_message = output_state.values["messages"][-1].content
+                    use_interactive_menu = output_state.values.get("use_interactive_menu", False)
 
-            # Handle different response types based on workflow
-            # Pass business credentials to send_response
-            if workflow == "audio":
-                audio_buffer = output_state.values["audio_buffer"]
-                success = await send_response(
-                    from_number, response_message, "audio", audio_buffer,
-                    phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
-                )
-            elif workflow == "image":
-                image_path = output_state.values["image_path"]
-                with open(image_path, "rb") as f:
-                    image_data = f.read()
-                success = await send_response(
-                    from_number, response_message, "image", image_data,
-                    phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
-                )
-            elif use_interactive_menu:
-                # Send category selection list (new flow)
-                # Fetch categories from API (or use mock data as fallback)
-                menu_adapter = MenuAdapter()
-                try:
-                    menu_structure = await menu_adapter.get_menu_structure()
-                    categories = menu_structure.get("data", {}).get("categories", [])
-                    logger.info(f"Fetched {len(categories)} categories via use_interactive_menu flag")
-                    interactive_comp = create_category_selection_list(categories)
-                except Exception as e:
-                    logger.error(f"Error fetching menu structure via use_interactive_menu: {e}, using mock data")
-                    interactive_comp = create_category_selection_list()
-                finally:
-                    await menu_adapter.close()
+                # Handle different response types based on workflow
+                # Pass business credentials to send_response
+                if workflow == "audio":
+                    audio_buffer = output_state.values["audio_buffer"]
+                    success = await send_response(
+                        from_number, response_message, "audio", audio_buffer,
+                        phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                    )
+                elif workflow == "image":
+                    image_path = output_state.values["image_path"]
+                    with open(image_path, "rb") as f:
+                        image_data = f.read()
+                    success = await send_response(
+                        from_number, response_message, "image", image_data,
+                        phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                    )
+                elif use_interactive_menu:
+                    # Send category selection list (new flow)
+                    # Fetch categories from API (or use mock data as fallback)
+                    menu_adapter = MenuAdapter()
+                    try:
+                        menu_structure = await menu_adapter.get_menu_structure()
+                        categories = menu_structure.get("data", {}).get("categories", [])
+                        logger.info(f"Fetched {len(categories)} categories via use_interactive_menu flag")
+                        interactive_comp = create_category_selection_list(categories)
+                    except Exception as e:
+                        logger.error(f"Error fetching menu structure via use_interactive_menu: {e}, using mock data")
+                        interactive_comp = create_category_selection_list()
+                    finally:
+                        await menu_adapter.close()
 
-                success = await send_response(
-                    from_number, response_message, "interactive_list",
-                    phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
-                    interactive_component=interactive_comp
-                )
-            else:
-                success = await send_response(
-                    from_number, response_message, "text",
-                    phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
-                )
+                    success = await send_response(
+                        from_number, response_message, "interactive_list",
+                        phone_number_id=phone_number_id, whatsapp_token=whatsapp_token,
+                        interactive_component=interactive_comp
+                    )
+                else:
+                    success = await send_response(
+                        from_number, response_message, "text",
+                        phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
+                    )
 
-            if not success:
-                return Response(content="Failed to send message", status_code=500)
+                if not success:
+                    return Response(content="Failed to send message", status_code=500)
 
-            return Response(content="Message processed", status_code=200)
+                return Response(content="Message processed", status_code=200)
 
         elif "statuses" in change_value:
             return Response(content="Status update received", status_code=200)
