@@ -94,6 +94,68 @@ def create_list_component(
     return component
 
 
+def create_product_list(
+    products: List[Dict],
+    category_name: str,
+    header_text: Optional[str] = None,
+) -> Dict:
+    """Create an interactive list to display products in a category.
+
+    Features:
+    - Displays up to 10 products (WhatsApp limit)
+    - Shows product name and price in title
+    - Shows description in subtitle
+    - Each row has ID format: add_product_{product_id}
+    - Automatically handles both basePrice and price fields
+
+    Args:
+        products: List of product dicts with id, name, basePrice/price, description
+        category_name: Name of the category for display
+        header_text: Optional custom header (defaults to "{category_name} Menu")
+
+    Returns:
+        Interactive list component dict
+    """
+    if not header_text:
+        header_text = f"{category_name} Menu"
+
+    # Build product rows
+    rows = []
+    for product in products[:10]:  # WhatsApp limit: 10 rows
+        product_id = product.get("id", "")
+        name = product.get("name", "Unknown Product")
+
+        # Handle both basePrice (API) and price (mock) fields
+        price = product.get("basePrice") or product.get("price", 0)
+
+        # Format price
+        if price % 1 == 0:  # Whole number
+            price_str = f"${int(price)}"
+        else:
+            price_str = f"${price:.2f}"
+
+        title = f"{name} - {price_str}"
+        description = product.get("description", "")
+
+        rows.append({
+            "id": f"add_product_{product_id}",
+            "title": title[:24],  # WhatsApp limit
+            "description": description[:72] if description else f"Price: {price_str}"
+        })
+
+    # Create list component
+    return create_list_component(
+        body_text=f"Choose from our {category_name}:",
+        sections=[{
+            "title": category_name,
+            "rows": rows
+        }],
+        button_text="Select Item",
+        header_text=header_text,
+        footer_text="Tap to add to cart"
+    )
+
+
 # ============================================
 # SIZE SELECTION - WITH API SUPPORT
 # ============================================
