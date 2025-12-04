@@ -1,0 +1,1053 @@
+openapi: 3.0.0
+info:
+  title: CartaAI Chatbot Integration API
+  description: |
+    Unified API for chatbot integration and conversational ordering experience.
+
+    This API provides essential endpoints for building a conversational commerce chatbot:
+    - Browse menu categories and products
+    - Get product details with modifiers and presentations
+    - Create and track orders
+    - Check delivery zones and fees
+    - Real-time order status updates
+
+    **Typical Chatbot Flow:**
+    1. Display menu categories using `/menu2/bot-structure`
+    2. Show products in selected category
+    3. Get product details with modifiers using `/menu/getProductInMenu`
+    4. Check delivery zone and fees using `/delivery/zones`
+    5. Create order using `/order`
+    6. Track order status using `/order/get-order/{orderId}`
+
+    **Authentication:**
+    Most endpoints require JWT Bearer token authentication.
+
+    **Required Parameters:**
+    - `subDomain`: Business identifier (e.g., "restaurant-name")
+    - `localId`: Branch/location identifier
+
+  version: 1.0.0
+  contact:
+    name: CartaAI Support
+    email: support@cartaai.pe
+
+servers:
+  - url: https://ssgg.api.cartaai.pe/api/v1
+    description: Production server
+
+security:
+  - Bearer: []
+
+tags:
+  - name: Menu Discovery
+    description: Browse menu structure, categories, and products
+  - name: Product Details
+    description: Get detailed product information with modifiers
+  - name: Order Management
+    description: Create and manage orders
+  - name: Delivery Information
+    description: Delivery zones, fees, and availability
+  - name: Order Tracking
+    description: Track order status and updates
+
+paths:
+  # ============================================
+  # MENU DISCOVERY - Essential for Chatbot
+  # ============================================
+  /menu2/bot-structure:
+    get:
+      summary: Get Bot Menu Structure
+      description: |
+        **PRIMARY ENDPOINT FOR CHATBOT MENU DISPLAY**
+
+        Retrieves the complete menu structure optimized for bot integration.
+        Returns categories with their products in a hierarchical format.
+
+        Use this endpoint to:
+        - Display initial menu categories to user
+        - Show all products within a category
+        - Build conversational menu navigation
+      tags:
+        - Menu Discovery
+      security:
+        - Bearer: []
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+          example: "restaurant-name"
+        - name: localId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Local/branch identifier (optional - if not provided, returns menu for all locations)
+          example: "branch-001"
+      responses:
+        '200':
+          description: Menu structure retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                    example: "Menu structure retrieved"
+                  data:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              example: "cat123"
+                            name:
+                              type: string
+                              example: "Burgers"
+                            description:
+                              type: string
+                            imageUrl:
+                              type: string
+                              format: uri
+                            position:
+                              type: integer
+                            products:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  name:
+                                    type: string
+                                  description:
+                                    type: string
+                                  basePrice:
+                                    type: number
+                                  imageUrl:
+                                    type: string
+                                  isAvailable:
+                                    type: boolean
+                                  preparationTime:
+                                    type: integer
+              example:
+                type: "1"
+                message: "Menu structure retrieved"
+                data:
+                  categories:
+                    - id: "cat001"
+                      name: "Burgers"
+                      position: 1
+                      products:
+                        - id: "prod001"
+                          name: "Classic Burger"
+                          basePrice: 15.99
+                          isAvailable: true
+        '404':
+          description: Menu not found for location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /categories/get-all/{subDomain}/{localId}:
+    get:
+      summary: Get All Categories
+      description: |
+        Retrieves all menu categories for a location.
+        Useful for displaying category list or filtering products.
+      tags:
+        - Menu Discovery
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  /products/get-all/{subDomain}/{localId}:
+    get:
+      summary: Get All Products
+      description: |
+        Retrieves all products for a location with their presentations and modifiers.
+        Use this for product search or filtering by category.
+      tags:
+        - Menu Discovery
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by category ID
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  # ============================================
+  # PRODUCT DETAILS - Essential for Order Building
+  # ============================================
+  /menu/getProductInMenu/{localId}/{subDomain}:
+    post:
+      summary: Get Product Details in Menu Context
+      description: |
+        **PRIMARY ENDPOINT FOR PRODUCT DETAILS**
+
+        Retrieves detailed information for specific products including:
+        - Complete product information
+        - All available presentations (sizes/variants)
+        - All modifiers with options
+        - Pricing for each option
+
+        Use this when:
+        - User selects a product to order
+        - Need to show customization options
+        - Building order item with modifiers
+      tags:
+        - Product Details
+      parameters:
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              description: Array of product IDs to retrieve
+              example: ["prod001", "prod002"]
+      responses:
+        '200':
+          description: Product details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductWithModifiers'
+              example:
+                success: true
+                message: "Products retrieved"
+                data:
+                  - _id: "prod001"
+                    name: "Classic Burger"
+                    description: "Juicy beef patty with fresh toppings"
+                    price: 15.99
+                    category:
+                      _id: "cat001"
+                      name: "Burgers"
+                    presentations:
+                      - _id: "pres001"
+                        name: "Regular"
+                        price: 15.99
+                      - _id: "pres002"
+                        name: "Large"
+                        price: 18.99
+                    modifiers:
+                      - _id: "mod001"
+                        name: "Choose your protein"
+                        minSelections: 1
+                        maxSelections: 1
+                        options:
+                          - _id: "opt001"
+                            name: "Beef"
+                            price: 0
+                          - _id: "opt002"
+                            name: "Chicken"
+                            price: 0
+                      - _id: "mod002"
+                        name: "Extras"
+                        minSelections: 0
+                        maxSelections: 5
+                        options:
+                          - _id: "opt003"
+                            name: "Extra Cheese"
+                            price: 2.00
+                          - _id: "opt004"
+                            name: "Bacon"
+                            price: 3.00
+
+  # ============================================
+  # ORDER MANAGEMENT - Core Chatbot Function
+  # ============================================
+  /order:
+    post:
+      summary: Create Order
+      description: |
+        **PRIMARY ENDPOINT FOR ORDER CREATION**
+
+        Creates a new order from the chatbot conversation.
+
+        Order creation flow:
+        1. Collect customer information (name, phone, address)
+        2. Build items array with products and modifiers
+        3. Select order type (delivery/pickup)
+        4. Choose payment method
+        5. Submit order
+
+        The API will calculate:
+        - Subtotal (sum of items)
+        - Tax
+        - Delivery fee (based on delivery zone)
+        - Total amount
+      tags:
+        - Order Management
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                    example: "Order created successfully"
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                type: "1"
+                message: "Order created successfully"
+                data:
+                  _id: "order123"
+                  orderNumber: "ORD-2024-001234"
+                  status: "pending"
+                  total: 45.99
+                  estimatedDeliveryTime: "2024-01-15T14:30:00Z"
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================
+  # ORDER TRACKING - Post-Order Updates
+  # ============================================
+  /order/get-order/{orderId}:
+    get:
+      summary: Get Order Details and Status
+      description: |
+        **PRIMARY ENDPOINT FOR ORDER TRACKING**
+
+        Retrieves current order details and status.
+        Use this to:
+        - Show order confirmation
+        - Track order progress
+        - Display order history
+        - Update user on order status
+      tags:
+        - Order Tracking
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Order ID returned from order creation
+      responses:
+        '200':
+          description: Order details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /order/filled-orders/{subDomain}/{localId}:
+    get:
+      summary: Get Customer Orders
+      description: |
+        Retrieves order history for a location.
+        Can be filtered by phone number to show customer's past orders.
+      tags:
+        - Order Tracking
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: phone
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by customer phone number
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, confirmed, preparing, ready, dispatched, delivered, cancelled]
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+  # ============================================
+  # DELIVERY INFORMATION - Pre-Order Checks
+  # ============================================
+  /delivery/zones/{subDomain}/{localId}:
+    get:
+      summary: Get Delivery Zones and Fees
+      description: |
+        **IMPORTANT FOR DELIVERY ORDERS**
+
+        Retrieves delivery zones with costs and requirements.
+        Use this to:
+        - Check if address is within delivery range
+        - Calculate delivery fee
+        - Show minimum order requirements
+        - Display estimated delivery time
+
+        Validate customer address before order creation.
+      tags:
+        - Delivery Information
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delivery zones retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeliveryZone'
+              example:
+                type: "1"
+                message: "Delivery zones retrieved"
+                data:
+                  - _id: "zone001"
+                    zoneName: "Downtown"
+                    deliveryCost: 5.00
+                    minimumOrder: 20.00
+                    estimatedTime: 30
+                    allowsFreeDelivery: true
+                    minimumForFreeDelivery: 50.00
+
+  /delivery/drivers/available/{subDomain}/{localId}:
+    get:
+      summary: Get Available Drivers
+      description: |
+        Check if delivery drivers are currently available.
+        Useful for real-time delivery availability.
+      tags:
+        - Delivery Information
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available drivers retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum: [available]
+
+# ============================================
+# COMPONENTS
+# ============================================
+components:
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      name: Authorization
+      in: header
+      description: JWT token in format "Bearer {token}"
+
+  schemas:
+    # ============================================
+    # MENU SCHEMAS
+    # ============================================
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        position:
+          type: integer
+        isActive:
+          type: boolean
+
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        basePrice:
+          type: number
+          format: float
+        categoryId:
+          type: string
+        imageUrl:
+          type: string
+        isAvailable:
+          type: boolean
+        preparationTime:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+
+    ProductWithModifiers:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        category:
+          type: object
+          properties:
+            _id:
+              type: string
+            name:
+              type: string
+        presentations:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              name:
+                type: string
+              price:
+                type: number
+        modifiers:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              name:
+                type: string
+              minSelections:
+                type: integer
+              maxSelections:
+                type: integer
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    name:
+                      type: string
+                    price:
+                      type: number
+
+    # ============================================
+    # ORDER SCHEMAS
+    # ============================================
+    Order:
+      type: object
+      properties:
+        _id:
+          type: string
+        orderNumber:
+          type: string
+          example: "ORD-2024-001234"
+        customer:
+          $ref: '#/components/schemas/CustomerInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        subtotal:
+          type: number
+        tax:
+          type: number
+        deliveryFee:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, ready, dispatched, delivered, cancelled, rejected]
+          description: |
+            Order status flow:
+            - pending: Order received, awaiting confirmation
+            - confirmed: Restaurant confirmed the order
+            - preparing: Food is being prepared
+            - ready: Order ready for pickup/delivery
+            - dispatched: Driver assigned and on the way
+            - delivered: Order completed
+            - cancelled: Order cancelled by customer
+            - rejected: Order rejected by restaurant
+        type:
+          type: string
+          enum: [delivery, pickup, on_site, scheduled_delivery, scheduled_pickup]
+        paymentMethod:
+          type: string
+          enum: [cash, card, yape, plin, mercado_pago, bank_transfer]
+        paymentStatus:
+          type: string
+          enum: [pending, paid, failed, refunded]
+        source:
+          type: string
+          enum: [digital_menu, whatsapp, phone, pos, website]
+          example: "whatsapp"
+        estimatedDeliveryTime:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        deliveryInfo:
+          $ref: '#/components/schemas/DeliveryInfo'
+        createdAt:
+          type: string
+          format: date-time
+
+    CustomerInfo:
+      type: object
+      required:
+        - name
+        - phone
+      properties:
+        name:
+          type: string
+          example: "Juan Pérez"
+        phone:
+          type: string
+          pattern: '^[\+]?[0-9\s\-\(\)]{7,15}$'
+          example: "+51987654321"
+        email:
+          type: string
+          format: email
+        address:
+          $ref: '#/components/schemas/Address'
+
+    OrderItem:
+      type: object
+      required:
+        - productId
+        - name
+        - quantity
+        - unitPrice
+      properties:
+        productId:
+          type: string
+        presentationId:
+          type: string
+          description: Optional - specify if ordering a specific size/variant
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+        modifiers:
+          type: array
+          items:
+            type: object
+            properties:
+              modifierId:
+                type: string
+              name:
+                type: string
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    optionId:
+                      type: string
+                    name:
+                      type: string
+                    price:
+                      type: number
+                    quantity:
+                      type: integer
+        notes:
+          type: string
+          description: Special instructions for this item
+
+    DeliveryInfo:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+        coordinates:
+          type: object
+          properties:
+            latitude:
+              type: number
+            longitude:
+              type: number
+        deliveryInstructions:
+          type: string
+          example: "Ring doorbell twice, leave at door"
+        estimatedTime:
+          type: integer
+          description: Estimated time in minutes
+
+    Address:
+      type: object
+      required:
+        - street
+        - city
+      properties:
+        street:
+          type: string
+          example: "Av. Larco 1234"
+        city:
+          type: string
+          example: "Lima"
+        district:
+          type: string
+          example: "Miraflores"
+        postalCode:
+          type: string
+        reference:
+          type: string
+          example: "Frente al parque Kennedy"
+
+    DeliveryZone:
+      type: object
+      properties:
+        _id:
+          type: string
+        zoneName:
+          type: string
+        deliveryCost:
+          type: number
+          description: Delivery fee for this zone
+        minimumOrder:
+          type: number
+          description: Minimum order amount required
+        estimatedTime:
+          type: integer
+          description: Estimated delivery time in minutes
+        allowsFreeDelivery:
+          type: boolean
+        minimumForFreeDelivery:
+          type: number
+          description: Order amount for free delivery
+        coordinates:
+          type: array
+          items:
+            type: object
+            properties:
+              latitude:
+                type: number
+              longitude:
+                type: number
+
+    # ============================================
+    # REQUEST SCHEMAS
+    # ============================================
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer
+        - items
+        - type
+        - paymentMethod
+      properties:
+        customer:
+          type: object
+          required:
+            - name
+            - phone
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+            address:
+              $ref: '#/components/schemas/Address'
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - productId
+              - name
+              - quantity
+              - unitPrice
+            properties:
+              productId:
+                type: string
+              presentationId:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: integer
+              unitPrice:
+                type: number
+              modifiers:
+                type: array
+                items:
+                  type: object
+              notes:
+                type: string
+        type:
+          type: string
+          enum: [delivery, pickup, on_site, scheduled_delivery, scheduled_pickup]
+          example: "delivery"
+        paymentMethod:
+          type: string
+          enum: [cash, card, yape, plin, mercado_pago, bank_transfer]
+          example: "cash"
+        notes:
+          type: string
+          example: "Sin cebolla, por favor"
+        deliveryInfo:
+          type: object
+          properties:
+            address:
+              $ref: '#/components/schemas/Address'
+            deliveryInstructions:
+              type: string
+        source:
+          type: string
+          enum: [digital_menu, whatsapp, phone, pos, website]
+          default: "whatsapp"
+      example:
+        customer:
+          name: "Juan Pérez"
+          phone: "+51987654321"
+          email: "juan@example.com"
+          address:
+            street: "Av. Larco 1234"
+            city: "Lima"
+            district: "Miraflores"
+            reference: "Frente al parque"
+        items:
+          - productId: "prod001"
+            presentationId: "pres001"
+            name: "Classic Burger"
+            quantity: 2
+            unitPrice: 15.99
+            modifiers:
+              - modifierId: "mod001"
+                name: "Extras"
+                options:
+                  - optionId: "opt001"
+                    name: "Extra Cheese"
+                    price: 2.00
+                    quantity: 1
+            notes: "Sin cebolla"
+        type: "delivery"
+        paymentMethod: "cash"
+        notes: "Llamar al llegar"
+        deliveryInfo:
+          address:
+            street: "Av. Larco 1234"
+            city: "Lima"
+            district: "Miraflores"
+            reference: "Frente al parque"
+          deliveryInstructions: "Tocar el timbre 2 veces"
+        source: "whatsapp"
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "3"
+          description: "Error type: 3 = error"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Validation error: Customer phone is required"
+        data:
+          type: object
+          nullable: true
+          description: Additional error details

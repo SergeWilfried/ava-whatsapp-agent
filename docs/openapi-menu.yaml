@@ -1,0 +1,1074 @@
+openapi: 3.0.0
+info:
+  title: CartaAI Menu Management API
+  description: |
+    Comprehensive API for managing restaurant menus, including:
+    - Menu integration and product details
+    - Batch update operations (Menu v2)
+    - AI-powered menu parsing from images
+    - Excel/CSV import functionality
+    - Menu image management
+  version: 2.0.0
+  contact:
+    name: CartaAI Support
+    email: support@cartaai.pe
+
+servers:
+  - url: https://ssgg.api.cartaai.pe/api/v1
+    description: Production server
+
+security:
+  - Bearer: []
+
+tags:
+  - name: Menu Integration
+    description: Menu product details and integration endpoints
+  - name: Menu v2 - Batch Operations
+    description: Batch update operations for menu items
+  - name: Menu v2 - Structure
+    description: Menu structure and PDF export
+  - name: Menu Parser
+    description: AI-powered menu parsing from images
+  - name: Menu Excel Import
+    description: Import menus from Excel/CSV files
+  - name: Menu Images
+    description: Menu image management
+
+paths:
+  # ============================================
+  # MENU INTEGRATION
+  # ============================================
+  /menu/getProductInMenu/{localId}/{subDomain}:
+    post:
+      summary: Get Product Details in Menu
+      description: Retrieves detailed information for specified products within a menu context, including presentations, modifiers, and categories.
+      tags:
+        - Menu Integration
+      parameters:
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Local/branch identifier
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              description: Array of product IDs to retrieve
+              example: ["507f1f77bcf86cd799439011", "507f191e810c19729de860ea"]
+      responses:
+        '200':
+          description: Product details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product details retrieved successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductInMenu'
+        '400':
+          description: Bad request - Invalid product IDs or empty array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================
+  # MENU V2 - INTEGRATION
+  # ============================================
+  /menu2/v2/integration/{subDomain}:
+    get:
+      summary: Get Menu Integration V2
+      description: Retrieves complete menu integration data for a subdomain (all locations).
+      tags:
+        - Menu v2 - Structure
+      security:
+        - Bearer: []
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+      responses:
+        '200':
+          description: Menu integration data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuIntegrationResponse'
+
+  /menu2/integration/{subDomain}/{businessLocationId}:
+    get:
+      summary: Get Menu Integration for Specific Location
+      description: Retrieves complete menu integration data for a specific business location.
+      tags:
+        - Menu v2 - Structure
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+        - name: businessLocationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business location identifier
+      responses:
+        '200':
+          description: Menu integration data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuIntegrationResponse'
+
+  /menu2/bot-structure:
+    get:
+      summary: Get Bot Menu Structure
+      description: Retrieves the menu structure formatted for WhatsApp bot integration.
+      tags:
+        - Menu v2 - Structure
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+        - name: localId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Local/branch identifier (optional)
+      responses:
+        '200':
+          description: Bot structure retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BotStructureResponse'
+
+  # ============================================
+  # MENU V2 - BATCH OPERATIONS
+  # ============================================
+  /menu2/update-multiple-business-location/{itemType}/{rId}:
+    post:
+      summary: Generic Batch Update for Menu Items
+      description: Updates multiple business locations for a specific menu item type.
+      tags:
+        - Menu v2 - Batch Operations
+      parameters:
+        - name: itemType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [productos, categorias, modificadores, opciones]
+          description: Type of menu item to update
+        - name: rId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Resource identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                locations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      localId:
+                        type: string
+                      subDomain:
+                        type: string
+                      data:
+                        type: object
+              example:
+                locations:
+                  - localId: "loc1"
+                    subDomain: "restaurant"
+                    data:
+                      isActive: true
+      responses:
+        '200':
+          description: Batch update successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  /menu2/v2/update-multiple-business-location/productos:
+    post:
+      summary: Batch Update Products V2
+      description: Batch update products across multiple business locations with enhanced features.
+      tags:
+        - Menu v2 - Batch Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: Products updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  /menu2/update-multiple-business-location/productos:
+    post:
+      summary: Batch Update Products
+      description: Batch update products across multiple business locations.
+      tags:
+        - Menu v2 - Batch Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: Products updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  /menu2/update-multiple-business-location/categorias:
+    post:
+      summary: Batch Update Categories
+      description: Batch update categories across multiple business locations.
+      tags:
+        - Menu v2 - Batch Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: Categories updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  /menu2/update-multiple-business-location/modificadores:
+    post:
+      summary: Batch Update Modifiers
+      description: Batch update modifiers across multiple business locations.
+      tags:
+        - Menu v2 - Batch Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: Modifiers updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  /menu2/update-multiple-business-location/opciones:
+    post:
+      summary: Batch Update Options
+      description: Batch update modifier options across multiple business locations.
+      tags:
+        - Menu v2 - Batch Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: Options updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  # ============================================
+  # MENU V2 - PDF EXPORT
+  # ============================================
+  /menu2/download-menu-pdf:
+    post:
+      summary: Download Menu as PDF
+      description: Generates and downloads a PDF version of the menu.
+      tags:
+        - Menu v2 - Structure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subDomain:
+                  type: string
+                localId:
+                  type: string
+                includeImages:
+                  type: boolean
+                  default: true
+                includePrices:
+                  type: boolean
+                  default: true
+                language:
+                  type: string
+                  enum: [es, en, pt]
+                  default: es
+      responses:
+        '200':
+          description: PDF generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ============================================
+  # MENU PARSER - IMAGE PARSING
+  # ============================================
+  /menu-parser/{subDomain}/{localId}:
+    post:
+      summary: Upload and Parse Menu Image
+      description: Uploads a menu image and asynchronously processes it using AI to extract menu items.
+      tags:
+        - Menu Parser
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Local/branch identifier
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Menu image file (max 10MB)
+      responses:
+        '202':
+          description: Menu image uploaded and processing started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                    example: Menu parsing started
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+                      status:
+                        type: string
+                        enum: [pending, processing]
+        '400':
+          description: Bad request - Invalid file or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /menu-parser/direct/{subDomain}/{localId}:
+    post:
+      summary: Direct Menu Parsing (Synchronous)
+      description: Uploads and immediately processes menu image synchronously. Use for smaller menus.
+      tags:
+        - Menu Parser
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Menu parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuParseResponse'
+
+  /menu-parser/process-url:
+    post:
+      summary: Parse Menu from URL
+      description: Processes a menu image from a provided URL.
+      tags:
+        - Menu Parser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - subDomain
+                - localId
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL of the menu image
+                subDomain:
+                  type: string
+                localId:
+                  type: string
+      responses:
+        '202':
+          description: Menu processing from URL started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+
+  /menu-parser/process-s3:
+    post:
+      summary: Parse Menu from S3
+      description: Processes a menu image stored in S3 bucket.
+      tags:
+        - Menu Parser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - s3Key
+                - bucket
+                - subDomain
+                - localId
+              properties:
+                s3Key:
+                  type: string
+                  description: S3 object key
+                bucket:
+                  type: string
+                  description: S3 bucket name
+                subDomain:
+                  type: string
+                localId:
+                  type: string
+      responses:
+        '202':
+          description: Menu processing from S3 started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+
+  /menu-parser/batch:
+    post:
+      summary: Batch Process Multiple Menus
+      description: Processes multiple menu images in a single batch operation.
+      tags:
+        - Menu Parser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                menus:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                        format: uri
+                      subDomain:
+                        type: string
+                      localId:
+                        type: string
+      responses:
+        '202':
+          description: Batch processing started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                  totalMenus:
+                    type: integer
+                  status:
+                    type: string
+
+  /menu-parser/retry:
+    post:
+      summary: Retry Failed Menu Processing
+      description: Retries processing a previously failed menu parsing job.
+      tags:
+        - Menu Parser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jobId
+              properties:
+                jobId:
+                  type: string
+                  description: Job ID of the failed parsing operation
+      responses:
+        '200':
+          description: Retry initiated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+                      status:
+                        type: string
+
+  # ============================================
+  # MENU EXCEL IMPORT
+  # ============================================
+  /menu-excel/upload/{subDomain}/{localId}:
+    post:
+      summary: Upload and Import Menu from Excel/CSV
+      description: Uploads an Excel or CSV file and imports menu items into the system.
+      tags:
+        - Menu Excel Import
+      parameters:
+        - name: subDomain
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+        - name: localId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Local/branch identifier
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file (.xlsx, .xls) or CSV file (max 50MB)
+      responses:
+        '200':
+          description: Menu imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                    example: Menu imported successfully
+                  data:
+                    type: object
+                    properties:
+                      imported:
+                        type: integer
+                        description: Number of items imported
+                      errors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            message:
+                              type: string
+        '400':
+          description: Bad request - Invalid file format or data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================
+  # MENU IMAGES
+  # ============================================
+  /menu-pic:
+    get:
+      summary: Get Menu Images
+      description: Retrieves menu images for a specific business location.
+      tags:
+        - Menu Images
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Business subdomain
+        - name: localId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Local/branch identifier
+      responses:
+        '200':
+          description: Menu images retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                          format: uri
+                        uploadedAt:
+                          type: string
+                          format: date-time
+                        size:
+                          type: integer
+    post:
+      summary: Upload Menu Images
+      description: Uploads one or more menu images (max 10 files, 10MB each).
+      tags:
+        - Menu Images
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Menu image files (max 10 files)
+      responses:
+        '200':
+          description: Images uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      uploaded:
+                        type: array
+                        items:
+                          type: string
+                          format: uri
+    delete:
+      summary: Delete Menu Image
+      description: Deletes a specific menu image by URL.
+      tags:
+        - Menu Images
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          description: URL of the image to delete
+      responses:
+        '200':
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                    example: Image deleted successfully
+
+  /menu-pic/update-images:
+    post:
+      summary: Update/Replace Menu Images
+      description: Replaces existing menu images with new ones.
+      tags:
+        - Menu Images
+      parameters:
+        - name: subDomain
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: localId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '200':
+          description: Images updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "1"
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      updated:
+                        type: array
+                        items:
+                          type: string
+                          format: uri
+
+# ============================================
+# COMPONENTS
+# ============================================
+components:
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      name: Authorization
+      in: header
+      description: JWT token in format "Bearer {token}"
+
+  schemas:
+    ProductInMenu:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Product ID
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        categoryId:
+          type: string
+        category:
+          type: object
+          properties:
+            _id:
+              type: string
+            name:
+              type: string
+            position:
+              type: integer
+        presentations:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              name:
+                type: string
+              price:
+                type: number
+        modifiers:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              name:
+                type: string
+              minSelections:
+                type: integer
+              maxSelections:
+                type: integer
+              options:
+                type: array
+                items:
+                  type: object
+
+    MenuIntegrationResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "1"
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            categories:
+              type: array
+              items:
+                type: object
+            products:
+              type: array
+              items:
+                type: object
+            modifiers:
+              type: array
+              items:
+                type: object
+
+    BotStructureResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "1"
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            categories:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  products:
+                    type: array
+                    items:
+                      type: object
+
+    BatchUpdateRequest:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            type: object
+            properties:
+              localId:
+                type: string
+              subDomain:
+                type: string
+              updates:
+                type: object
+                description: Fields to update
+
+    BatchUpdateResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "1"
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            updated:
+              type: integer
+            failed:
+              type: integer
+            errors:
+              type: array
+              items:
+                type: object
+
+    MenuParseResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "1"
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            categories:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        price:
+                          type: number
+                        description:
+                          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "3"
+        message:
+          type: string
+          description: Error message
+        data:
+          type: object
+          nullable: true

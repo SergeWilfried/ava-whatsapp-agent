@@ -214,6 +214,10 @@ class Order:
     delivery_phone: Optional[str] = None
     customer_name: Optional[str] = None
 
+    # API integration fields
+    api_order_id: Optional[str] = None  # CartaAI API order ID
+    api_order_number: Optional[str] = None  # CartaAI order number (e.g., "ORD-2024-001234")
+
     # Pricing
     subtotal: float = 0.0
     tax_rate: float = 0.08
@@ -262,6 +266,8 @@ class Order:
             "delivery_address": self.delivery_address,
             "delivery_phone": self.delivery_phone,
             "customer_name": self.customer_name,
+            "api_order_id": self.api_order_id,
+            "api_order_number": self.api_order_number,
             "subtotal": self.subtotal,
             "tax_rate": self.tax_rate,
             "tax_amount": self.tax_amount,
