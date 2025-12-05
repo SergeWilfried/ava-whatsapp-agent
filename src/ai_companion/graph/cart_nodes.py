@@ -30,6 +30,8 @@ from ai_companion.interfaces.whatsapp.interactive_components import (
     create_menu_list_from_restaurant_menu,
 )
 from ai_companion.core.schedules import RESTAURANT_MENU, RESTAURANT_INFO
+# AI-powered message generation
+from ai_companion.graph.utils.message_generator import generate_dynamic_message
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +71,23 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
     menu_item_id = current_item.get("menu_item_id")
 
     if not menu_item_id:
+        # Generate AI-powered "item not found" message
+        message = await generate_dynamic_message("item_not_found")
         return {
-            "messages": AIMessage(content="I couldn't find that item. Please try selecting from the menu again."),
+            "messages": AIMessage(content=message),
             "order_stage": OrderStage.BROWSING.value
         }
 
     # Check if item needs customization (pizzas, burgers) - ASYNC
     menu_item = await cart_service.find_menu_item(menu_item_id)
     if not menu_item:
+        # Generate AI-powered "item unavailable" message
+        message = await generate_dynamic_message(
+            "item_unavailable",
+            {"item_name": "that item"}
+        )
         return {
-            "messages": AIMessage(content="Sorry, that item is not available right now."),
+            "messages": AIMessage(content=message),
             "order_stage": OrderStage.BROWSING.value
         }
 
@@ -100,8 +109,16 @@ async def add_to_cart_node(state: AICompanionState) -> Dict:
                 base_price=menu_item.get("price", 0.0)
             )
 
+        # Generate AI-powered greeting for item selection
+        message = await generate_dynamic_message(
+            "item_added",
+            {
+                "item_name": menu_item['name'],
+                "price": menu_item.get("price", 0.0)
+            }
+        )
         return {
-            "messages": AIMessage(content=f"Great choice! {menu_item['name']}"),
+            "messages": AIMessage(content=message),
             "interactive_component": interactive_comp,
             "order_stage": OrderStage.CUSTOMIZING.value,
             "current_item": menu_item
@@ -168,8 +185,16 @@ async def handle_size_selection_node(state: AICompanionState) -> Dict:
             # Fallback to legacy extras
             interactive_comp = create_extras_list(category=category)
 
+        # Generate AI-powered message for size selection confirmation
+        size_message = await generate_dynamic_message(
+            "size_selected",
+            {
+                "size_name": size,
+                "price": 0.0  # Price is in the presentation already
+            }
+        )
         return {
-            "messages": AIMessage(content=f"Perfect! Would you like to add any extras?"),
+            "messages": AIMessage(content=f"{size_message}\n\nWould you like to add any extras?"),
             "interactive_component": interactive_comp,
             "pending_customization": pending,
             "order_stage": OrderStage.CUSTOMIZING.value
@@ -263,9 +288,11 @@ async def view_cart_node(state: AICompanionState) -> Dict:
         from ai_companion.interfaces.whatsapp.interactive_components import (
             create_quick_actions_buttons,
         )
+        # Generate AI-powered "cart empty" message
+        message = await generate_dynamic_message("cart_empty")
         interactive_comp = create_quick_actions_buttons()
         return {
-            "messages": AIMessage(content="🛒 Your cart is empty.\n\nBrowse the menu to add items!"),
+            "messages": AIMessage(content=message),
             "interactive_component": interactive_comp,
             "order_stage": OrderStage.BROWSING.value
         }
@@ -301,8 +328,10 @@ async def checkout_node(state: AICompanionState) -> Dict:
     cart = get_or_create_cart(state)
 
     if cart.is_empty:
+        # Generate AI-powered "cart empty" message
+        message = await generate_dynamic_message("cart_empty")
         return {
-            "messages": AIMessage(content="Your cart is empty. Add some items first!"),
+            "messages": AIMessage(content=message),
             "order_stage": OrderStage.BROWSING.value,
             "use_interactive_menu": True
         }
@@ -310,8 +339,17 @@ async def checkout_node(state: AICompanionState) -> Dict:
     # Ask for delivery method
     interactive_comp = create_delivery_method_buttons()
 
+    # Generate AI-powered checkout start message
+    message = await generate_dynamic_message(
+        "checkout_start",
+        {
+            "item_count": cart.item_count,
+            "total": cart.subtotal
+        }
+    )
+
     return {
-        "messages": AIMessage(content="Great! Let's complete your order."),
+        "messages": AIMessage(content=message),
         "interactive_component": interactive_comp,
         "order_stage": OrderStage.CHECKOUT.value
     }
@@ -410,9 +448,10 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
         logger.info(f"Using user_phone as customer_phone: {customer_phone}")
     elif not customer_phone:
         logger.warning("No customer_phone or user_phone available - requesting from user")
-        # Ask user for phone number
+        # Generate AI-powered phone request message
+        message = await generate_dynamic_message("request_phone")
         return {
-            "messages": [AIMessage(content="Pour finaliser votre commande, veuillez fournir votre numéro de téléphone s'il vous plaît. 📱")],
+            "messages": [AIMessage(content=message)],
             "order_stage": OrderStage.AWAITING_PHONE.value,
         }
 
@@ -448,7 +487,7 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
 
 async def confirm_order_node(state: AICompanionState) -> Dict:
     """Confirm and finalize the order."""
-    from ai_companion.modules.cart import format_order_confirmation
+    from ai_companion.modules.cart.order_messages import format_order_confirmation_async
 
     cart_service = CartService()
     cart = get_or_create_cart(state)
@@ -475,8 +514,8 @@ async def confirm_order_node(state: AICompanionState) -> Dict:
     # Save order (local backup)
     cart_service.save_order(order)
 
-    # Use V2 order confirmation message
-    confirmation_message = format_order_confirmation(order)
+    # Use async V2 order confirmation message with AI-generated header
+    confirmation_message = await format_order_confirmation_async(order)
 
     # Create order status interactive component (legacy)
     interactive_comp = create_order_status_message(

@@ -2,12 +2,13 @@
 
 from typing import Optional
 from datetime import datetime
+import asyncio
 
 from ai_companion.modules.cart.models import Order, OrderStatus, DeliveryMethod
 
 
-def format_order_confirmation(order: Order) -> str:
-    """Format order confirmation message for WhatsApp.
+async def format_order_confirmation_async(order: Order) -> str:
+    """Format order confirmation message with AI-generated greeting.
 
     Args:
         order: Order to format
@@ -15,7 +16,21 @@ def format_order_confirmation(order: Order) -> str:
     Returns:
         Formatted confirmation message
     """
-    lines = ["✅ *Commande Confirmée!*\n"]
+    from ai_companion.graph.utils.message_generator import generate_dynamic_message
+
+    # Generate AI-powered confirmation header
+    try:
+        header = await generate_dynamic_message(
+            "order_confirmed",
+            {
+                "order_id": order.api_order_number or order.order_id,
+                "total": order.total
+            }
+        )
+        lines = [f"{header}\n"]
+    except Exception:
+        # Fallback to static header if AI generation fails
+        lines = ["✅ *Commande Confirmée!*\n"]
 
     # Order number (prefer API order number if available)
     if order.api_order_number:
@@ -97,6 +112,8 @@ def format_order_confirmation(order: Order) -> str:
         lines.append(f"\n📝 Note: {order.special_instructions}")
 
     lines.append("")
+
+    # Keep static thank you message (it's short and already friendly)
     lines.append("Merci pour votre commande! 🙏")
 
     # Add API tracking info if available
@@ -104,6 +121,121 @@ def format_order_confirmation(order: Order) -> str:
         lines.append(f"\n_Suivez votre commande: {order.api_order_id}_")
 
     return "\n".join(lines)
+
+
+def format_order_confirmation(order: Order) -> str:
+    """Synchronous wrapper for format_order_confirmation_async.
+
+    This maintains backward compatibility with existing synchronous code.
+    For new code, prefer using format_order_confirmation_async directly.
+
+    Args:
+        order: Order to format
+
+    Returns:
+        Formatted confirmation message
+    """
+    try:
+        # Try to run in existing event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is running, return static version
+            # (async version should be called directly in this case)
+            lines = ["✅ *Commande Confirmée!*\n"]
+
+            # Order number (prefer API order number if available)
+            if order.api_order_number:
+                lines.append(f"📋 Votre Commande: *{order.api_order_number}*")
+            else:
+                lines.append(f"📋 Votre Commande: *{order.order_id}*")
+
+            lines.append("")
+
+            # Customer info
+            if order.customer_name:
+                lines.append(f"👤 Client: {order.customer_name}")
+
+            if order.customer_phone:
+                lines.append(f"📞 Phone: {order.customer_phone}")
+
+            lines.append("")
+
+            # Order items
+            lines.append("🛒 *Votre Commande:*")
+            for item in order.cart.items:
+                size_text = (
+                    f" ({item.customization.size})"
+                    if item.customization and item.customization.size
+                    else ""
+                )
+                extras_text = ""
+                if item.customization and item.customization.extras:
+                    extras_count = len(item.customization.extras)
+                    extras_text = f" + {extras_count} extra(s)"
+
+                lines.append(
+                    f"  • {item.quantity}x {item.name}{size_text}{extras_text}"
+                )
+                lines.append(f"    ${item.item_total:.2f}")
+
+            lines.append("")
+
+            # Pricing
+            lines.append(f"Sous Total: ${order.subtotal:.2f}")
+
+            if order.delivery_fee > 0:
+                lines.append(f"Livraison: ${order.delivery_fee:.2f}")
+            elif order.discount_description:
+                lines.append(f"Livraison: Gratuit ✨")
+
+            lines.append(f"Taxes: ${order.tax_amount:.2f}")
+
+            if order.discount > 0:
+                lines.append(f"Rabais: -${order.discount:.2f}")
+
+            lines.append(f"*Total: ${order.total:.2f}*")
+
+            lines.append("")
+
+            # Delivery info
+            if order.delivery_method == DeliveryMethod.DELIVERY:
+                lines.append(f"🚚 *Adresse de livraison:*")
+                lines.append(f"{order.delivery_address}")
+
+                if order.estimated_ready_time:
+                    estimated_time = order.estimated_ready_time.strftime("%I:%M %p")
+                    lines.append(f"\n⏰ Livraison estimée: {estimated_time}")
+
+            elif order.delivery_method == DeliveryMethod.PICKUP:
+                lines.append(f"🏪 *Retrait*")
+
+                if order.estimated_ready_time:
+                    estimated_time = order.estimated_ready_time.strftime("%I:%M %p")
+                    lines.append(f"\n⏰ Prêt pour enlèvement: {estimated_time}")
+
+            # Payment method
+            if order.payment_method:
+                payment_name = order.payment_method.value.replace("_", " ").title()
+                lines.append(f"\n💳 Methode de paiement: {payment_name}")
+
+            # Special instructions
+            if order.special_instructions:
+                lines.append(f"\n📝 Note: {order.special_instructions}")
+
+            lines.append("")
+            lines.append("Merci pour votre commande! 🙏")
+
+            # Add API tracking info if available
+            if order.api_order_id:
+                lines.append(f"\n_Suivez votre commande: {order.api_order_id}_")
+
+            return "\n".join(lines)
+        else:
+            # Run async version
+            return loop.run_until_complete(format_order_confirmation_async(order))
+    except RuntimeError:
+        # No event loop, create new one
+        return asyncio.run(format_order_confirmation_async(order))
 
 
 def format_order_status_update(
