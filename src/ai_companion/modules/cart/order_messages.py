@@ -29,8 +29,8 @@ def format_order_confirmation(order: Order) -> str:
     if order.customer_name:
         lines.append(f"👤 Client: {order.customer_name}")
 
-    if order.delivery_phone:
-        lines.append(f"📞 Phone: {order.delivery_phone}")
+    if order.customer_phone:
+        lines.append(f"📞 Phone: {order.customer_phone}")
 
     lines.append("")
 

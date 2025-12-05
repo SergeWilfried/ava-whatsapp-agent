@@ -213,8 +213,8 @@ class CartService:
         cart: ShoppingCart,
         delivery_method: DeliveryMethod,
         customer_name: Optional[str] = None,
+        customer_phone: Optional[str] = None,
         delivery_address: Optional[str] = None,
-        delivery_phone: Optional[str] = None,
         payment_method: Optional[PaymentMethod] = None,
         special_instructions: Optional[str] = None
     ) -> Order:
@@ -224,8 +224,8 @@ class CartService:
             cart: Shopping cart to convert to order
             delivery_method: How customer wants to receive order
             customer_name: Customer name
+            customer_phone: Customer contact phone (required for all order types)
             delivery_address: Delivery address (required for delivery)
-            delivery_phone: Contact phone
             payment_method: Payment method
             special_instructions: Order-level special instructions
 
@@ -237,7 +237,7 @@ class CartService:
             delivery_method=delivery_method,
             payment_method=payment_method,
             delivery_address=delivery_address,
-            delivery_phone=delivery_phone,
+            customer_phone=customer_phone,
             customer_name=customer_name,
             special_instructions=special_instructions
         )

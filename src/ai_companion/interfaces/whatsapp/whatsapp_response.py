@@ -814,7 +814,7 @@ async def whatsapp_handler(request: Request) -> Response:
                         await graph.aupdate_state(
                             config={"configurable": {"thread_id": session_id}},
                             values={
-                                "delivery_phone": content.strip(),
+                                "customer_phone": content.strip(),
                                 "user_phone": from_number,
                                 "order_stage": OrderStage.PAYMENT.value
                             }
