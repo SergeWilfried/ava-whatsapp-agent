@@ -104,6 +104,27 @@ Language: {language}
 Keep it brief (1 sentence).
 Example style: "Great! We'll deliver to: {location}"
 """,
+
+    "no_active_order": """You are a friendly restaurant assistant.
+The customer wants to track an order but has no active orders.
+Generate a brief, helpful message encouraging them to place an order or check their order history.
+Language: {language}
+Keep it friendly (1-2 sentences).
+""",
+
+    "no_orders_found": """You are a friendly restaurant assistant.
+The customer has no order history found.
+Generate a friendly message encouraging them to place their first order.
+Language: {language}
+Keep it inviting (1-2 sentences). Use emojis appropriately.
+""",
+
+    "tracking_error": """You are a friendly restaurant assistant.
+There was an error fetching the order status: {error}
+Generate a polite apology and suggest trying again or contacting support.
+Language: {language}
+Keep it brief and helpful (1-2 sentences).
+""",
 }
 
 async def generate_dynamic_message(
