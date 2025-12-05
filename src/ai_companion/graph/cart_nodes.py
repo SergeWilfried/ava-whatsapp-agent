@@ -412,6 +412,7 @@ async def handle_delivery_method_node(state: AICompanionState) -> Dict:
         "messages": AIMessage(content=next_message),
         "interactive_component": interactive_comp,
         "delivery_method": delivery_method,
+        "user_phone": state.get("user_phone"),  # Persist user_phone through the flow
         "order_stage": OrderStage.PAYMENT.value
     }
 
@@ -452,6 +453,7 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
         message = await generate_dynamic_message("request_phone")
         return {
             "messages": [AIMessage(content=message)],
+            "user_phone": state.get("user_phone"),  # Keep user_phone in state
             "order_stage": OrderStage.AWAITING_PHONE.value,
         }
 
@@ -480,6 +482,7 @@ async def handle_payment_method_node(state: AICompanionState) -> Dict:
         "messages": AIMessage(content=f"Here's your order summary:"),
         "interactive_component": interactive_comp,
         "payment_method": payment_method,
+        "customer_phone": customer_phone,  # Persist customer_phone to state
         "active_order_id": order.api_order_id or order.order_id,
         "order_stage": OrderStage.CONFIRMED.value
     }
@@ -498,6 +501,11 @@ async def confirm_order_node(state: AICompanionState) -> Dict:
     delivery_address = state.get("delivery_address")
     customer_phone = state.get("customer_phone")
     customer_name = state.get("customer_name", "Customer")
+
+    # Fallback to user_phone if customer_phone not set
+    if not customer_phone:
+        customer_phone = state.get("user_phone")
+        logger.info(f"confirm_order_node: Using user_phone as fallback: {customer_phone}")
 
     order = await cart_service.create_order_from_cart(
         cart=cart,
