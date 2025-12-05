@@ -585,6 +585,59 @@ class CartaAIClient:
         endpoint = f"/delivery/drivers/available/{self.subdomain}/{self.local_id}"
         return await self._request("GET", endpoint)
 
+    async def calculate_delivery_cost(
+        self,
+        restaurant_lat: float,
+        restaurant_lng: float,
+        delivery_lat: float,
+        delivery_lng: float,
+    ) -> Dict[str, Any]:
+        """Calculate delivery cost based on mileage zones.
+
+        Uses the distance between restaurant and delivery location to determine
+        which delivery zone applies and calculates the cost using zone-based pricing.
+
+        Args:
+            restaurant_lat: Restaurant latitude coordinate
+            restaurant_lng: Restaurant longitude coordinate
+            delivery_lat: Delivery location latitude coordinate
+            delivery_lng: Delivery location longitude coordinate
+
+        Returns:
+            {
+                "type": "1",
+                "message": "Success",
+                "data": {
+                    "distance": 1.23,
+                    "zone": {
+                        "_id": "zone123",
+                        "zoneName": "City-Wide Delivery",
+                        "type": "mileage",
+                        "baseCost": 5,
+                        "baseDistance": 2,
+                        "incrementalCost": 2,
+                        "distanceIncrement": 1,
+                        "minimumOrder": 15,
+                        "estimatedTime": 30
+                    },
+                    "deliveryCost": 5.0,
+                    "estimatedTime": 30,
+                    "meetsMinimum": true
+                }
+            }
+
+        Raises:
+            CartaAIAPIException: If API returns error (e.g., no zone found for location)
+        """
+        endpoint = "/delivery/calculate-cost"
+        payload = {
+            "restaurantLocation": {"lat": restaurant_lat, "lng": restaurant_lng},
+            "deliveryLocation": {"lat": delivery_lat, "lng": delivery_lng},
+            "subDomain": self.subdomain,
+            "localId": self.local_id,
+        }
+        return await self._request("POST", endpoint, json_data=payload)
+
     # ============================================
     # UTILITY METHODS
     # ============================================

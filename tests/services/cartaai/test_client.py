@@ -557,3 +557,75 @@ class TestCartaAIClientDeliveryEndpoints:
                 assert result["type"] == "1"
                 assert len(result["data"]) == 1
                 assert result["data"][0]["name"] == "John"
+
+    async def test_calculate_delivery_cost_success(self, client_config):
+        """Test successful delivery cost calculation."""
+        mock_response = {
+            "type": "1",
+            "message": "Success",
+            "data": {
+                "distance": 1.23,
+                "zone": {
+                    "_id": "zone123",
+                    "zoneName": "City-Wide Delivery",
+                    "type": "mileage",
+                    "baseCost": 5,
+                    "baseDistance": 2,
+                    "incrementalCost": 2,
+                    "distanceIncrement": 1,
+                    "minimumOrder": 15,
+                    "estimatedTime": 30,
+                },
+                "deliveryCost": 5.0,
+                "estimatedTime": 30,
+                "meetsMinimum": True,
+            },
+        }
+
+        with aioresponses.aioresponses() as m:
+            m.post(
+                "https://api.test.com/api/v1/delivery/calculate-cost",
+                payload=mock_response,
+                status=200,
+            )
+
+            async with CartaAIClient(**client_config) as client:
+                result = await client.calculate_delivery_cost(
+                    restaurant_lat=-12.0464,
+                    restaurant_lng=-77.0428,
+                    delivery_lat=-12.0564,
+                    delivery_lng=-77.0528,
+                )
+
+                assert result["type"] == "1"
+                assert result["data"]["distance"] == 1.23
+                assert result["data"]["deliveryCost"] == 5.0
+                assert result["data"]["zone"]["zoneName"] == "City-Wide Delivery"
+                assert result["data"]["zone"]["type"] == "mileage"
+                assert result["data"]["meetsMinimum"] is True
+
+    async def test_calculate_delivery_cost_no_zone_found(self, client_config):
+        """Test delivery cost calculation when no zone is found."""
+        mock_response = {
+            "type": "3",
+            "message": "No delivery zone found for this location",
+            "data": None,
+        }
+
+        with aioresponses.aioresponses() as m:
+            m.post(
+                "https://api.test.com/api/v1/delivery/calculate-cost",
+                payload=mock_response,
+                status=404,
+            )
+
+            async with CartaAIClient(**client_config) as client:
+                with pytest.raises(CartaAIAPIException) as exc_info:
+                    await client.calculate_delivery_cost(
+                        restaurant_lat=-12.0464,
+                        restaurant_lng=-77.0428,
+                        delivery_lat=-15.0000,  # Far away location
+                        delivery_lng=-80.0000,
+                    )
+
+                assert exc_info.value.status_code == 404

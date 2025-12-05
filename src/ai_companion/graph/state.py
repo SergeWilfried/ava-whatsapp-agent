@@ -33,6 +33,13 @@ class AICompanionState(MessagesState):
         user_location (dict): User's shared location with latitude, longitude, address, name
         awaiting_location (bool): Flag indicating system is waiting for user to share location
 
+        # Delivery zone fields (for mileage-based delivery)
+        delivery_zone (dict): Selected delivery zone information from API
+        delivery_distance (float): Distance in km from restaurant to delivery location
+        api_delivery_cost (float): Delivery cost calculated by API based on zone
+        zone_validated (bool): Whether delivery zone has been validated
+        zone_validation_error (str): Error message if zone validation failed
+
         # User information
         user_phone (str): User's WhatsApp phone number
     """
@@ -59,6 +66,13 @@ class AICompanionState(MessagesState):
     # Location state
     user_location: Optional[Dict]
     awaiting_location: bool
+
+    # Delivery zone state (mileage-based delivery)
+    delivery_zone: Optional[Dict]
+    delivery_distance: Optional[float]
+    api_delivery_cost: Optional[float]
+    zone_validated: bool
+    zone_validation_error: Optional[str]
 
     # User information
     user_phone: Optional[str]

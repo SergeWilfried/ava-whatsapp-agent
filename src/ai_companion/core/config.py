@@ -31,6 +31,10 @@ class CartaAIConfig:
     orders_api_enabled: bool = False  # Enable orders API
     delivery_api_enabled: bool = False  # Enable delivery API
 
+    # Restaurant Location (for mileage-based delivery)
+    restaurant_latitude: Optional[float] = None  # Restaurant GPS latitude
+    restaurant_longitude: Optional[float] = None  # Restaurant GPS longitude
+
     # Logging
     enable_api_logging: bool = False  # Enable detailed API logging
 
@@ -67,6 +71,13 @@ class CartaAIConfig:
             == "true",
             delivery_api_enabled=os.getenv("CARTAAI_DELIVERY_ENABLED", "false").lower()
             == "true",
+            # Restaurant Location
+            restaurant_latitude=float(os.getenv("RESTAURANT_LATITUDE"))
+            if os.getenv("RESTAURANT_LATITUDE")
+            else None,
+            restaurant_longitude=float(os.getenv("RESTAURANT_LONGITUDE"))
+            if os.getenv("RESTAURANT_LONGITUDE")
+            else None,
             # Logging
             enable_api_logging=os.getenv("ENABLE_API_LOGGING", "false").lower()
             == "true",

@@ -244,17 +244,56 @@ class Order:
         """Calculate total order amount."""
         return self.subtotal + self.tax_amount + self.delivery_fee - self.discount
 
-    def calculate_totals(self, tax_rate: float, delivery_fee: float, free_delivery_minimum: float) -> None:
-        """Calculate all totals based on cart and settings."""
+    def calculate_totals(
+        self,
+        tax_rate: float,
+        delivery_fee: Optional[float] = None,
+        free_delivery_minimum: Optional[float] = None,
+        zone_delivery_cost: Optional[float] = None,
+        allows_free_delivery: bool = False,
+        minimum_for_free_delivery: Optional[float] = None,
+    ) -> None:
+        """Calculate all totals based on cart and settings.
+
+        Supports both legacy flat-rate delivery and new zone-based delivery:
+        - Legacy mode: Uses delivery_fee and free_delivery_minimum
+        - Zone-based mode: Uses zone_delivery_cost, allows_free_delivery, minimum_for_free_delivery
+
+        Args:
+            tax_rate: Tax rate to apply to subtotal
+            delivery_fee: Legacy flat delivery fee (fallback if zone-based not available)
+            free_delivery_minimum: Legacy free delivery threshold (fallback)
+            zone_delivery_cost: Zone-based delivery cost from API
+            allows_free_delivery: Zone's allowsFreeDelivery flag
+            minimum_for_free_delivery: Zone's minimum order for free delivery
+        """
         self.subtotal = self.cart.subtotal
         self.tax_rate = tax_rate
 
-        # Apply free delivery if applicable
-        if self.subtotal >= free_delivery_minimum:
+        # Skip delivery fee calculation for non-delivery orders
+        if self.delivery_method != DeliveryMethod.DELIVERY:
             self.delivery_fee = 0.0
-            self.discount_description = "Free delivery"
+            return
+
+        # Use zone-based pricing if available
+        if zone_delivery_cost is not None:
+            # Check zone's free delivery logic
+            if allows_free_delivery and minimum_for_free_delivery and self.subtotal >= minimum_for_free_delivery:
+                self.delivery_fee = 0.0
+                self.discount_description = f"Free delivery (minimum ${minimum_for_free_delivery:.2f} met)"
+            else:
+                self.delivery_fee = zone_delivery_cost
+        # Fallback to legacy flat-rate delivery
+        elif delivery_fee is not None:
+            # Legacy free delivery logic
+            if free_delivery_minimum and self.subtotal >= free_delivery_minimum:
+                self.delivery_fee = 0.0
+                self.discount_description = "Free delivery"
+            else:
+                self.delivery_fee = delivery_fee
         else:
-            self.delivery_fee = delivery_fee if self.delivery_method == DeliveryMethod.DELIVERY else 0.0
+            # No delivery fee configured
+            self.delivery_fee = 0.0
 
     def to_dict(self) -> Dict:
         """Convert order to dictionary for serialization."""

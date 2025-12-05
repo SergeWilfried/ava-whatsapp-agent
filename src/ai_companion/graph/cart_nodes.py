@@ -571,3 +571,222 @@ async def request_delivery_location_node(state: AICompanionState) -> Dict:
         "awaiting_location": True,
         "order_stage": OrderStage.AWAITING_LOCATION.value
     }
+
+
+async def validate_delivery_zone_node(state: AICompanionState) -> Dict:
+    """Validate delivery zone after user shares location.
+
+    This node is called after the user shares their delivery location.
+    It validates the location against delivery zones and calculates the cost.
+
+    Requirements:
+    - A delivery address can only fall into ONE zone (not multiple)
+    - If out of zone, automatically suggest pickup
+
+    Flow:
+    1. Extract lat/lng from user_location
+    2. Call DeliveryService.validate_delivery_zone()
+    3. If valid:
+       - Store zone data in state
+       - Calculate delivery cost
+       - Proceed to show cost to user
+    4. If invalid:
+       - Show "Out of delivery area" message
+       - Offer pickup alternative
+       - Return to delivery method selection
+
+    Returns:
+        Dict: State updates with zone validation results
+    """
+    from ai_companion.core.config import get_config
+    from ai_companion.services.cartaai.client import CartaAIClient
+    from ai_companion.services.cartaai.delivery_service import DeliveryService
+
+    logger.info("Validating delivery zone for user location")
+
+    user_location = state.get("user_location")
+    if not user_location:
+        logger.error("No user location found in state")
+        return {
+            "zone_validated": False,
+            "zone_validation_error": "No location provided",
+            "order_stage": OrderStage.AWAITING_LOCATION.value,
+        }
+
+    delivery_lat = user_location.get("latitude")
+    delivery_lng = user_location.get("longitude")
+
+    if not delivery_lat or not delivery_lng:
+        logger.error("Invalid location coordinates")
+        return {
+            "zone_validated": False,
+            "zone_validation_error": "Invalid coordinates",
+            "order_stage": OrderStage.AWAITING_LOCATION.value,
+        }
+
+    # Get configuration
+    config = get_config()
+    cartaai_config = config.cartaai
+
+    # Check if restaurant location is configured
+    restaurant_lat = getattr(cartaai_config, "restaurant_latitude", None)
+    restaurant_lng = getattr(cartaai_config, "restaurant_longitude", None)
+
+    if not restaurant_lat or not restaurant_lng:
+        logger.error("Restaurant location not configured")
+        # Fallback to hardcoded values (TODO: remove when config is set)
+        restaurant_lat = -12.0464
+        restaurant_lng = -77.0428
+        logger.warning(f"Using fallback restaurant location: {restaurant_lat}, {restaurant_lng}")
+
+    # Initialize delivery service
+    async with CartaAIClient(
+        base_url=cartaai_config.api_base_url,
+        subdomain=cartaai_config.subdomain,
+        local_id=cartaai_config.local_id,
+        api_key=cartaai_config.api_key,
+    ) as client:
+        delivery_service = DeliveryService(
+            client=client,
+            restaurant_lat=restaurant_lat,
+            restaurant_lng=restaurant_lng,
+        )
+
+        # Validate delivery zone
+        is_valid, zone_data, error_msg = await delivery_service.validate_delivery_zone(
+            delivery_lat=delivery_lat,
+            delivery_lng=delivery_lng,
+        )
+
+        if is_valid and zone_data:
+            logger.info(f"Delivery zone validated: {zone_data.get('zone', {}).get('zoneName')}")
+            return {
+                "zone_validated": True,
+                "delivery_zone": zone_data.get("zone"),
+                "delivery_distance": zone_data.get("distance"),
+                "api_delivery_cost": zone_data.get("deliveryCost"),
+                "zone_validation_error": None,
+                "order_stage": OrderStage.AWAITING_PAYMENT_METHOD.value,
+            }
+        else:
+            logger.warning(f"Delivery zone validation failed: {error_msg}")
+            return {
+                "zone_validated": False,
+                "zone_validation_error": error_msg,
+                "order_stage": OrderStage.AWAITING_DELIVERY_METHOD.value,
+            }
+
+
+async def display_delivery_cost_node(state: AICompanionState) -> Dict:
+    """Display delivery cost to user after zone validation.
+
+    Requirements:
+    - Display distance in KM
+    - Display delivery fee
+    - Use zone's allowsFreeDelivery flag for free delivery logic
+
+    This node shows the calculated delivery cost and zone information
+    before proceeding to payment method selection.
+
+    Returns:
+        Dict: State updates with cost display message
+    """
+    logger.info("Displaying delivery cost to user")
+
+    zone_validated = state.get("zone_validated", False)
+
+    if not zone_validated:
+        # Out of zone - suggest pickup
+        error_msg = state.get("zone_validation_error", "Unknown error")
+        distance = state.get("delivery_distance")
+
+        from ai_companion.core.config import get_config
+        from ai_companion.services.cartaai.client import CartaAIClient
+        from ai_companion.services.cartaai.delivery_service import DeliveryService
+
+        config = get_config()
+        cartaai_config = config.cartaai
+
+        async with CartaAIClient(
+            base_url=cartaai_config.api_base_url,
+            subdomain=cartaai_config.subdomain,
+            local_id=cartaai_config.local_id,
+            api_key=cartaai_config.api_key,
+        ) as client:
+            restaurant_lat = getattr(cartaai_config, "restaurant_latitude", -12.0464)
+            restaurant_lng = getattr(cartaai_config, "restaurant_longitude", -77.0428)
+
+            delivery_service = DeliveryService(
+                client=client,
+                restaurant_lat=restaurant_lat,
+                restaurant_lng=restaurant_lng,
+            )
+
+            out_of_zone_msg = delivery_service.format_out_of_zone_message(distance)
+
+            # Create buttons for pickup alternative
+            interactive_comp = create_delivery_method_buttons()
+
+            return {
+                "messages": AIMessage(content=out_of_zone_msg),
+                "interactive_component": interactive_comp,
+                "delivery_method": None,  # Reset delivery method
+                "order_stage": OrderStage.AWAITING_DELIVERY_METHOD.value,
+            }
+
+    # Zone validated - display cost
+    delivery_zone = state.get("delivery_zone", {})
+    delivery_distance = state.get("delivery_distance", 0.0)
+    api_delivery_cost = state.get("api_delivery_cost", 0.0)
+
+    # Get cart subtotal for free delivery calculation
+    cart_dict = state.get("shopping_cart")
+    subtotal = 0.0
+    if cart_dict:
+        cart = ShoppingCart.from_dict(cart_dict)
+        subtotal = cart.subtotal
+
+    # Format delivery info
+    from ai_companion.core.config import get_config
+    from ai_companion.services.cartaai.client import CartaAIClient
+    from ai_companion.services.cartaai.delivery_service import DeliveryService
+
+    config = get_config()
+    cartaai_config = config.cartaai
+
+    async with CartaAIClient(
+        base_url=cartaai_config.api_base_url,
+        subdomain=cartaai_config.subdomain,
+        local_id=cartaai_config.local_id,
+        api_key=cartaai_config.api_key,
+    ) as client:
+        restaurant_lat = getattr(cartaai_config, "restaurant_latitude", -12.0464)
+        restaurant_lng = getattr(cartaai_config, "restaurant_longitude", -77.0428)
+
+        delivery_service = DeliveryService(
+            client=client,
+            restaurant_lat=restaurant_lat,
+            restaurant_lng=restaurant_lng,
+        )
+
+        delivery_info = {
+            "distance": delivery_distance,
+            "cost": api_delivery_cost,
+            "zone_name": delivery_zone.get("zoneName", "Unknown"),
+            "estimated_time": delivery_zone.get("estimatedTime", 30),
+            "allows_free_delivery": delivery_zone.get("allowsFreeDelivery", False),
+            "minimum_for_free_delivery": delivery_zone.get("minimumForFreeDelivery", 0.0),
+        }
+
+        formatted_info = delivery_service.format_delivery_info(delivery_info, subtotal)
+
+        message = f"{formatted_info}\n\n✅ Continuez avec le paiement:"
+
+        # Create payment method selection
+        interactive_comp = create_payment_method_list()
+
+        return {
+            "messages": AIMessage(content=message),
+            "interactive_component": interactive_comp,
+            "order_stage": OrderStage.AWAITING_PAYMENT_METHOD.value,
+        }
