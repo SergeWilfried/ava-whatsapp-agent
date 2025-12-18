@@ -78,7 +78,8 @@ async def whatsapp_handler(request: Request) -> Response:
 
             if not phone_number_id:
                 logger.error("No phone_number_id found in webhook metadata")
-                return Response(content="Missing phone_number_id in webhook", status_code=400)
+                # Return 200 to prevent Meta from retrying
+                return Response(content="OK", status_code=200)
 
             # Check if this is the special phone number ID that uses environment variables
             if phone_number_id == "709970042210245":
@@ -93,7 +94,8 @@ async def whatsapp_handler(request: Request) -> Response:
 
                 if not business:
                     logger.error(f"No business found for phone_number_id: {phone_number_id}")
-                    return Response(content="Business not found for this phone number", status_code=404)
+                    # Return 200 to prevent Meta from retrying
+                    return Response(content="OK", status_code=200)
 
                 # Extract business-specific credentials
                 whatsapp_token = business.get("decryptedAccessToken")
@@ -102,7 +104,8 @@ async def whatsapp_handler(request: Request) -> Response:
 
                 if not whatsapp_token:
                     logger.error(f"No valid WhatsApp token for business: {business_name}")
-                    return Response(content="Invalid business credentials", status_code=500)
+                    # Return 200 to prevent Meta from retrying
+                    return Response(content="OK", status_code=200)
 
             logger.info(f"Processing message for business: {business_name} (subdomain: {business_subdomain})")
 
@@ -910,19 +913,25 @@ async def whatsapp_handler(request: Request) -> Response:
                     )
 
                 if not success:
-                    return Response(content="Failed to send message", status_code=500)
+                    logger.error("Failed to send message to user")
+                    # Return 200 to prevent Meta from retrying
+                    return Response(content="OK", status_code=200)
 
-                return Response(content="Message processed", status_code=200)
+                return Response(content="OK", status_code=200)
 
         elif "statuses" in change_value:
-            return Response(content="Status update received", status_code=200)
+            return Response(content="OK", status_code=200)
 
         else:
-            return Response(content="Unknown event type", status_code=400)
+            logger.warning(f"Unknown event type received: {change_value.keys()}")
+            # Return 200 to prevent Meta from retrying
+            return Response(content="OK", status_code=200)
 
     except Exception as e:
         logger.error(f"Error processing message: {e}", exc_info=True)
-        return Response(content="Internal server error", status_code=500)
+        # CRITICAL: Always return 200 to prevent Meta from retrying for 7 days
+        # Log the error but acknowledge receipt of the webhook
+        return Response(content="OK", status_code=200)
 
 
 async def download_media(media_id: str, whatsapp_token: Optional[str] = None) -> bytes:
