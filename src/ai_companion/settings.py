@@ -39,5 +39,11 @@ class Settings(BaseSettings):
     FREE_DELIVERY_MINIMUM: float = 25.00
     TAX_RATE: float = 0.08  # 8% tax rate
 
+    # Conversation State API Configuration
+    CONVERSATION_API_URL: str = "http://localhost:3000"  # TypeScript API base URL
+    CONVERSATION_API_KEY: str | None = None  # Optional API key for authentication
+    CONVERSATION_API_TIMEOUT: float = 10.0  # Request timeout in seconds
+    ENABLE_CONVERSATION_SYNC: bool = True  # Enable/disable conversation state sync
+
 
 settings = Settings()

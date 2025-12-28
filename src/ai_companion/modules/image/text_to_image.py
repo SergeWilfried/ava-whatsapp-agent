@@ -6,7 +6,7 @@ from typing import Optional
 from ai_companion.core.exceptions import TextToImageError
 from ai_companion.core.prompts import IMAGE_ENHANCEMENT_PROMPT, IMAGE_SCENARIO_PROMPT
 from ai_companion.settings import settings
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from together import Together
