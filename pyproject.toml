@@ -23,9 +23,8 @@ dependencies = [
     "duckdb>=1.1.3",
     "langgraph-checkpoint-sqlite>=2.0.1",
     "aiosqlite>=0.20.0",
-    # Platform-specific Qdrant client (newer versions require numpy 2.x)
-    "qdrant-client>=1.12.0,<1.13.0; platform_machine == 'x86_64' and sys_platform == 'darwin'",
-    "qdrant-client>=1.15.0; platform_machine != 'x86_64' or sys_platform != 'darwin'",
+    # Qdrant client - use version compatible with NumPy 1.x
+    "qdrant-client>=1.12.0,<1.13.0",
     "sentence-transformers>=3.3.1",
     # MongoDB support for multi-business
     "motor>=3.3.0",
@@ -34,12 +33,10 @@ dependencies = [
     # Production optimizations
     "slowapi>=0.1.9",  # Rate limiting
     "redis>=5.0.0",  # Optional: for distributed caching
-    # Platform-specific PyTorch and NumPy versions
-    # Intel Macs need older versions due to wheel compatibility
-    "torch>=2.0.0,<2.3.0; platform_machine == 'x86_64' and sys_platform == 'darwin'",
-    "torch>=2.0.0; platform_machine != 'x86_64' or sys_platform != 'darwin'",
-    "numpy>=1.24.0,<2.0.0; platform_machine == 'x86_64' and sys_platform == 'darwin'",
-    "numpy>=2.0.0; platform_machine != 'x86_64' or sys_platform != 'darwin'",
+    # NumPy compatibility - keep at 1.x for PyTorch compatibility
+    # Current stable PyTorch versions (2.x) are compiled against NumPy 1.x
+    "numpy>=1.24.0,<2.0.0",
+    "torch>=2.0.0",
 ]
 
 [tool.ruff]
