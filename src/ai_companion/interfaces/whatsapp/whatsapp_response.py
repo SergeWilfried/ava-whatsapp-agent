@@ -14,6 +14,12 @@ from ai_companion.modules.speech import SpeechToText, TextToSpeech
 from ai_companion.settings import settings
 # Use optimized business service for production (500+ concurrent requests)
 from ai_companion.services.business_service_optimized import get_optimized_business_service
+# Conversation state synchronization
+from ai_companion.services.conversation_sync_helper import (
+    initialize_conversation_for_user,
+    sync_graph_state_to_api,
+    add_message_to_conversation,
+)
 # Cart integration
 from ai_companion.interfaces.whatsapp.cart_handler import process_cart_interaction
 from ai_companion.graph import cart_nodes
@@ -108,6 +114,14 @@ async def whatsapp_handler(request: Request) -> Response:
                     return Response(content="OK", status_code=200)
 
             logger.info(f"Processing message for business: {business_name} (subdomain: {business_subdomain})")
+
+            # Initialize conversation state sync (creates or retrieves conversation)
+            if settings.ENABLE_CONVERSATION_SYNC:
+                try:
+                    session_id = await initialize_conversation_for_user(from_number, business_subdomain)
+                    logger.info(f"Conversation initialized: session_id={session_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize conversation sync: {e}")
 
             # Mark message as read and show typing indicator
             # This provides good UX while we process the message
@@ -869,6 +883,19 @@ async def whatsapp_handler(request: Request) -> Response:
                     workflow = output_state.values.get("workflow", "conversation")
                     response_message = output_state.values["messages"][-1].content
                     use_interactive_menu = output_state.values.get("use_interactive_menu", False)
+
+                    # Sync graph state to API and track messages
+                    if settings.ENABLE_CONVERSATION_SYNC:
+                        try:
+                            # Add user message to history
+                            await add_message_to_conversation(session_id, business_subdomain, "user", content)
+                            # Sync updated graph state to API
+                            await sync_graph_state_to_api(session_id, business_subdomain, dict(output_state.values))
+                            # Add bot response to history
+                            await add_message_to_conversation(session_id, business_subdomain, "bot", response_message)
+                            logger.debug("Conversation state synced successfully")
+                        except Exception as e:
+                            logger.warning(f"Failed to sync conversation state: {e}")
 
                 # Handle different response types based on workflow
                 # Pass business credentials to send_response
