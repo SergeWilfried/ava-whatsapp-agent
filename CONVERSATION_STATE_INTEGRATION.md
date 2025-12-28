@@ -397,12 +397,12 @@ async with ConversationMiddleware(
 
 ## Testing
 
-### 1. Start TypeScript API
+### 1. Start CartaAI API Server
 
-Ensure your TypeScript API is running:
+Ensure your CartaAI API server (TypeScript backend) is running:
 
 ```bash
-cd your-typescript-api
+cd your-cartaai-api
 npm run dev
 ```
 
@@ -411,7 +411,8 @@ npm run dev
 Update `.env`:
 
 ```bash
-CONVERSATION_API_URL=http://localhost:3000
+CARTAAI_API_BASE_URL=https://ssgg.api.cartaai.pe/api/v1
+CARTAAI_API_KEY=your_api_key
 ENABLE_CONVERSATION_SYNC=true
 ```
 
@@ -441,10 +442,12 @@ Use curl or Postman:
 
 ```bash
 # Get user's active conversation
-curl "http://localhost:3000/api/v1/conversations/user/+1234567890?subDomain=my-restaurant"
+curl "https://ssgg.api.cartaai.pe/api/v1/conversations/user/+1234567890?subDomain=my-restaurant" \
+  -H "X-Service-API-Key: your_api_key"
 
 # Get conversation by session ID
-curl "http://localhost:3000/api/v1/conversations/SESSION_ID?subDomain=my-restaurant"
+curl "https://ssgg.api.cartaai.pe/api/v1/conversations/SESSION_ID?subDomain=my-restaurant" \
+  -H "X-Service-API-Key: your_api_key"
 ```
 
 ## Error Handling
