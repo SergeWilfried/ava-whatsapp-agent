@@ -39,11 +39,16 @@ class Settings(BaseSettings):
     FREE_DELIVERY_MINIMUM: float = 25.00
     TAX_RATE: float = 0.08  # 8% tax rate
 
-    # Conversation State API Configuration
-    CONVERSATION_API_URL: str = "http://localhost:3000"  # TypeScript API base URL
-    CONVERSATION_API_KEY: str | None = None  # Optional API key for authentication
-    CONVERSATION_API_TIMEOUT: float = 10.0  # Request timeout in seconds
+    # CartaAI API Configuration (for menu, orders, and conversation state)
+    CARTAAI_API_BASE_URL: str = "https://ssgg.api.cartaai.pe/api/v1"
+    CARTAAI_SUBDOMAIN: str | None = None
+    CARTAAI_LOCAL_ID: str | None = None
+    CARTAAI_API_KEY: str | None = None
+    USE_CARTAAI_API: bool = False
+
+    # Conversation State Sync Configuration
     ENABLE_CONVERSATION_SYNC: bool = True  # Enable/disable conversation state sync
+    CONVERSATION_API_TIMEOUT: float = 10.0  # Request timeout in seconds
 
 
 settings = Settings()

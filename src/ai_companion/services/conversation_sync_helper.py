@@ -35,8 +35,8 @@ def get_conversation_service() -> Optional[ConversationStateService]:
 
     if _conversation_service is None:
         _conversation_service = ConversationStateService(
-            api_base_url=settings.CONVERSATION_API_URL,
-            api_key=settings.CONVERSATION_API_KEY,
+            api_base_url=settings.CARTAAI_API_BASE_URL,
+            api_key=settings.CARTAAI_API_KEY,
             timeout=settings.CONVERSATION_API_TIMEOUT
         )
 

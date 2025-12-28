@@ -70,12 +70,16 @@ The integration provides bidirectional synchronization between:
 Add these settings to your `.env` file:
 
 ```bash
-# Conversation State API Configuration
-CONVERSATION_API_URL=http://localhost:3000
-CONVERSATION_API_KEY=  # Optional: Add if your API requires authentication
-CONVERSATION_API_TIMEOUT=10.0
+# CartaAI API Configuration (used for conversation state sync)
+CARTAAI_API_BASE_URL=https://ssgg.api.cartaai.pe/api/v1
+CARTAAI_API_KEY=your_api_key_here  # Your CartaAI API key
+
+# Conversation State Sync Configuration
 ENABLE_CONVERSATION_SYNC=true
+CONVERSATION_API_TIMEOUT=10.0
 ```
+
+The conversation state service uses the same `CARTAAI_API_BASE_URL` that powers your menu and orders API integration.
 
 ### 2. Dependencies
 
@@ -110,12 +114,13 @@ from ai_companion.services.conversation_state_service import (
     ConversationStateService,
     ConversationIntent
 )
+from ai_companion.settings import settings
 
 # Initialize service
 async with ConversationStateService(
-    api_base_url="http://localhost:3000",
-    api_key=None,
-    timeout=10.0
+    api_base_url=settings.CARTAAI_API_BASE_URL,
+    api_key=settings.CARTAAI_API_KEY,
+    timeout=settings.CONVERSATION_API_TIMEOUT
 ) as service:
     # Create conversation
     conversation = await service.create_conversation(
