@@ -278,6 +278,97 @@ class ConversationStateService:
                 return None
             raise
 
+    async def lookup_tenant_by_phone(
+        self,
+        phone_number: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Lookup tenant/subdomain by phone number.
+
+        Implements: GET /api/v1/whatsapp/lookup/tenant/:phoneNumber
+
+        This endpoint is used when WhatsApp webhook events arrive with a phone number
+        but not the subdomain (tenant identifier). It returns the business subdomain,
+        bot ID, and session ID associated with the phone number.
+
+        Args:
+            phone_number: User's phone number in E.164 format (e.g., "+51999999999")
+
+        Returns:
+            {
+                "subDomain": "restaurant-abc",
+                "botId": "67890abcdef",
+                "sessionId": "bot123_51999999999_1234567890_xyz",
+                "isActive": true
+            }
+            or None if no active conversation/tenant found
+
+        Example:
+            tenant_info = await service.lookup_tenant_by_phone("+51999999999")
+            if tenant_info:
+                subdomain = tenant_info["subDomain"]
+                session_id = tenant_info["sessionId"]
+        """
+        await self._ensure_client()
+
+        try:
+            response = await self._client.get(
+                f"/api/v1/whatsapp/lookup/tenant/{phone_number}"
+            )
+
+            return self._handle_response(response)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.info(f"No tenant found for phone: {phone_number}")
+                return None
+            raise
+
+    async def get_conversation_by_phone(
+        self,
+        phone_number: str,
+        bot_id: Optional[str] = None
+    ) -> Optional[ConversationState]:
+        """
+        Get conversation state by phone number.
+
+        Implements: GET /api/v1/whatsapp/lookup/conversation/:phoneNumber
+
+        This is an alternative to lookup_tenant_by_phone that returns the full
+        conversation state instead of just tenant info.
+
+        Args:
+            phone_number: User's phone number in E.164 format
+            bot_id: Optional bot ID filter
+
+        Returns:
+            ConversationState object or None if not found
+
+        Example:
+            conversation = await service.get_conversation_by_phone(
+                phone_number="+51999999999",
+                bot_id="bot123"
+            )
+        """
+        await self._ensure_client()
+
+        params = {}
+        if bot_id:
+            params["botId"] = bot_id
+
+        try:
+            response = await self._client.get(
+                f"/api/v1/whatsapp/lookup/conversation/{phone_number}",
+                params=params
+            )
+
+            data = self._handle_response(response)
+            return ConversationState(**data)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.info(f"No conversation found for phone: {phone_number}")
+                return None
+            raise
+
     async def get_user_conversation(
         self,
         user_id: str,
@@ -389,6 +480,109 @@ class ConversationStateService:
 
         response = await self._client.patch(
             f"/api/v1/conversations/{session_id}/context",
+            json=payload
+        )
+
+        return self._handle_response(response)
+
+    async def sync_conversation_from_agent(
+        self,
+        session_id: str,
+        intent: str,
+        step: str,
+        context: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
+        is_active: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Sync conversation state from agent to API.
+
+        Implements: PUT /api/v1/whatsapp/agent/conversations/:sessionId/sync
+
+        This is the unified sync endpoint mentioned in the documentation that
+        updates conversation state after agent processing.
+
+        Args:
+            session_id: Conversation session ID
+            intent: Current intent (e.g., "payment", "delivery", "order")
+            step: Current step (e.g., "processing_payment", "selecting")
+            context: Context updates (cart items, delivery info, etc.)
+            metadata: Optional metadata (agent info, timestamps, etc.)
+            is_active: Whether conversation is active
+
+        Returns:
+            Updated conversation data
+
+        Example:
+            await service.sync_conversation_from_agent(
+                session_id="bot123_51999999999_1234567890_xyz",
+                intent="payment",
+                step="processing_payment",
+                context={
+                    "selectedItems": [...],
+                    "orderTotal": 50.00,
+                    "paymentMethod": "yape"
+                },
+                metadata={
+                    "agentProcessedAt": "2025-12-29T10:06:00.000Z",
+                    "agentVersion": "1.0.0"
+                }
+            )
+        """
+        await self._ensure_client()
+
+        payload = {
+            "intent": intent,
+            "step": step,
+            "context": context,
+            "metadata": metadata or {},
+            "isActive": is_active
+        }
+
+        response = await self._client.put(
+            f"/api/v1/whatsapp/agent/conversations/{session_id}/sync",
+            json=payload
+        )
+
+        return self._handle_response(response)
+
+    async def add_message_from_agent(
+        self,
+        session_id: str,
+        role: str,
+        content: str
+    ) -> Dict[str, Any]:
+        """
+        Add a message from agent to conversation history.
+
+        Implements: POST /api/v1/whatsapp/agent/conversations/:sessionId/messages
+
+        This is the agent-specific message endpoint mentioned in the documentation.
+
+        Args:
+            session_id: Conversation session ID
+            role: Message role ('user' or 'bot')
+            content: Message content
+
+        Returns:
+            Updated conversation data
+
+        Example:
+            await service.add_message_from_agent(
+                session_id="bot123_51999999999_1234567890_xyz",
+                role="bot",
+                content="Perfecto! Tu pedido está confirmado."
+            )
+        """
+        await self._ensure_client()
+
+        payload = {
+            "role": role,
+            "content": content
+        }
+
+        response = await self._client.post(
+            f"/api/v1/whatsapp/agent/conversations/{session_id}/messages",
             json=payload
         )
 

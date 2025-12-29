@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     TAX_RATE: float = 0.08  # 8% tax rate
 
     # CartaAI API Configuration (for menu, orders, and conversation state)
-    CARTAAI_API_BASE_URL: str = "https://ssgg.api.cartaai.pe/api/v1"
+    # Note: Base URL should NOT include /api/v1 path - it's added by individual services
+    CARTAAI_API_BASE_URL: str = "https://ssgg.api.cartaai.pe"
     CARTAAI_SUBDOMAIN: str | None = None
     CARTAAI_LOCAL_ID: str | None = None
     CARTAAI_API_KEY: str | None = None

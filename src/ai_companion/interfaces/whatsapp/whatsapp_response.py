@@ -115,13 +115,26 @@ async def whatsapp_handler(request: Request) -> Response:
 
             logger.info(f"Processing message for business: {business_name} (subdomain: {business_subdomain})")
 
-            # Initialize conversation state sync (creates or retrieves conversation)
+            # ============================================================
+            # CONVERSATION SYNC: Initialize conversation for this user
+            # ============================================================
+            conversation_session_id = None
             if settings.ENABLE_CONVERSATION_SYNC:
                 try:
-                    session_id = await initialize_conversation_for_user(from_number, business_subdomain)
-                    logger.info(f"Conversation initialized: session_id={session_id}")
+                    conversation_session_id = await initialize_conversation_for_user(
+                        user_phone=from_number,
+                        sub_domain=business_subdomain,
+                        local_id=business.get("localId") if business else None,
+                        bot_id=business.get("whatsappBotId") if business else None
+                    )
+                    if conversation_session_id:
+                        logger.info(f"Conversation session initialized: {conversation_session_id}")
+                    else:
+                        logger.debug("Conversation sync is disabled or unavailable")
                 except Exception as e:
-                    logger.warning(f"Failed to initialize conversation sync: {e}")
+                    logger.warning(f"Failed to initialize conversation: {e}")
+                    # Continue without sync - app should still work
+            # ============================================================
 
             # Mark message as read and show typing indicator
             # This provides good UX while we process the message
@@ -137,6 +150,22 @@ async def whatsapp_handler(request: Request) -> Response:
             content = ""
             if message["type"] == "audio":
                 content = await process_audio_message(message, whatsapp_token)
+
+                # ============================================================
+                # CONVERSATION SYNC: Track user audio message
+                # ============================================================
+                if conversation_session_id and content:
+                    try:
+                        await add_message_to_conversation(
+                            session_id=conversation_session_id,
+                            sub_domain=business_subdomain,
+                            role="user",
+                            content=f"[Audio message] {content}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to track audio message: {e}")
+                # ============================================================
+
             elif message["type"] == "image":
                 # Get image caption if any
                 content = message.get("image", {}).get("caption", "")
@@ -150,6 +179,21 @@ async def whatsapp_handler(request: Request) -> Response:
                     content += f"\n[Image Analysis: {description}]"
                 except Exception as e:
                     logger.warning(f"Failed to analyze image: {e}")
+
+                # ============================================================
+                # CONVERSATION SYNC: Track user image message
+                # ============================================================
+                if conversation_session_id and content:
+                    try:
+                        await add_message_to_conversation(
+                            session_id=conversation_session_id,
+                            sub_domain=business_subdomain,
+                            role="user",
+                            content=f"[Image] {content}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to track image message: {e}")
+                # ============================================================
             elif message["type"] == "interactive":
                 # Handle button or list reply with cart routing
                 interactive_data = message.get("interactive", {})
@@ -868,6 +912,21 @@ async def whatsapp_handler(request: Request) -> Response:
 
                         return Response(content="Phone number received, order created", status_code=200)
 
+                    # ============================================================
+                    # CONVERSATION SYNC: Track user text message
+                    # ============================================================
+                    if conversation_session_id and content:
+                        try:
+                            await add_message_to_conversation(
+                                session_id=conversation_session_id,
+                                sub_domain=business_subdomain,
+                                role="user",
+                                content=content
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to track text message: {e}")
+                    # ============================================================
+
                     # Normal message processing
                     await graph.ainvoke(
                         {
@@ -884,18 +943,24 @@ async def whatsapp_handler(request: Request) -> Response:
                     response_message = output_state.values["messages"][-1].content
                     use_interactive_menu = output_state.values.get("use_interactive_menu", False)
 
-                    # Sync graph state to API and track messages
-                    if settings.ENABLE_CONVERSATION_SYNC:
+                    # ============================================================
+                    # CONVERSATION SYNC: Sync graph state to API
+                    # ============================================================
+                    if conversation_session_id:
                         try:
-                            # Add user message to history
-                            await add_message_to_conversation(session_id, business_subdomain, "user", content)
-                            # Sync updated graph state to API
-                            await sync_graph_state_to_api(session_id, business_subdomain, dict(output_state.values))
-                            # Add bot response to history
-                            await add_message_to_conversation(session_id, business_subdomain, "bot", response_message)
-                            logger.debug("Conversation state synced successfully")
+                            # Get current state from graph
+                            graph_state_dict = dict(output_state.values) if output_state and output_state.values else {}
+
+                            # Sync to conversation API
+                            await sync_graph_state_to_api(
+                                session_id=conversation_session_id,
+                                sub_domain=business_subdomain,
+                                graph_state=graph_state_dict
+                            )
+                            logger.debug(f"Synced state for session {conversation_session_id}")
                         except Exception as e:
-                            logger.warning(f"Failed to sync conversation state: {e}")
+                            logger.warning(f"Failed to sync graph state: {e}")
+                    # ============================================================
 
                 # Handle different response types based on workflow
                 # Pass business credentials to send_response
@@ -939,6 +1004,17 @@ async def whatsapp_handler(request: Request) -> Response:
                         phone_number_id=phone_number_id, whatsapp_token=whatsapp_token
                     )
 
+                # ============================================================
+                # CONVERSATION SYNC: Track bot response
+                # ============================================================
+                if success:
+                    await track_bot_response(
+                        conversation_session_id,
+                        business_subdomain,
+                        response_message
+                    )
+                # ============================================================
+
                 if not success:
                     logger.error("Failed to send message to user")
                     # Return 200 to prevent Meta from retrying
@@ -959,6 +1035,34 @@ async def whatsapp_handler(request: Request) -> Response:
         # CRITICAL: Always return 200 to prevent Meta from retrying for 7 days
         # Log the error but acknowledge receipt of the webhook
         return Response(content="OK", status_code=200)
+
+
+async def track_bot_response(
+    conversation_session_id: Optional[str],
+    business_subdomain: str,
+    response_text: str
+) -> None:
+    """
+    Track bot response in conversation history.
+
+    Args:
+        conversation_session_id: Session ID (None if sync disabled)
+        business_subdomain: Business subdomain
+        response_text: Bot's response text
+    """
+    if not conversation_session_id or not response_text:
+        return
+
+    try:
+        await add_message_to_conversation(
+            session_id=conversation_session_id,
+            sub_domain=business_subdomain,
+            role="bot",
+            content=response_text
+        )
+        logger.debug(f"Tracked bot response for session {conversation_session_id}")
+    except Exception as e:
+        logger.warning(f"Failed to track bot response: {e}")
 
 
 async def download_media(media_id: str, whatsapp_token: Optional[str] = None) -> bytes:

@@ -7,7 +7,8 @@
       "Bash(ls:*)",
       "Bash(python -c:*)",
       "Bash(python -m py_compile:*)",
-      "Bash(git -C /Users/serge/workspace/ava-whatsapp-agent diff HEAD~2 HEAD -- src/ai_companion/services/conversation_sync_helper.py)"
+      "Bash(git -C /Users/serge/workspace/ava-whatsapp-agent diff HEAD~2 HEAD -- src/ai_companion/services/conversation_sync_helper.py)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

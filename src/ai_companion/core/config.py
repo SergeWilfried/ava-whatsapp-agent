@@ -10,7 +10,8 @@ class CartaAIConfig:
     """CartaAI API configuration settings."""
 
     # API Configuration
-    api_base_url: str = "https://ssgg.api.cartaai.pe/api/v1"
+    # Note: Base URL should NOT include /api/v1 - individual services add their paths
+    api_base_url: str = "https://ssgg.api.cartaai.pe"
     subdomain: Optional[str] = None
     local_id: Optional[str] = None
     api_key: Optional[str] = None
@@ -44,7 +45,7 @@ class CartaAIConfig:
         return cls(
             # API Configuration
             api_base_url=os.getenv(
-                "CARTAAI_API_BASE_URL", "https://ssgg.api.cartaai.pe/api/v1"
+                "CARTAAI_API_BASE_URL", "https://ssgg.api.cartaai.pe"
             ),
             subdomain=os.getenv("CARTAAI_SUBDOMAIN"),
             local_id=os.getenv("CARTAAI_LOCAL_ID"),

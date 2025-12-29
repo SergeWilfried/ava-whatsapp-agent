@@ -424,7 +424,7 @@ class CartaAIClient:
                 ]
             }
         """
-        endpoint = f"/categories/get-all/{self.subdomain}/{self.local_id}"
+        endpoint = f"/api/v1/categories/get-all/{self.subdomain}/{self.local_id}"
         return await self._request("GET", endpoint)
 
     async def get_product_details(self, product_ids: List[str]) -> Dict[str, Any]:
@@ -447,7 +447,7 @@ class CartaAIClient:
                 ]
             }
         """
-        endpoint = f"/menu/getProductInMenu/{self.local_id}/{self.subdomain}"
+        endpoint = f"/api/v1/menu/getProductInMenu/{self.local_id}/{self.subdomain}"
         return await self._request("POST", endpoint, json_data=product_ids)
 
     async def get_all_products(self, category_id: Optional[str] = None) -> Dict[str, Any]:
@@ -463,7 +463,7 @@ class CartaAIClient:
                 "data": [...]
             }
         """
-        endpoint = f"/products/get-all/{self.subdomain}/{self.local_id}"
+        endpoint = f"/api/v1/products/get-all/{self.subdomain}/{self.local_id}"
         params = {}
         if category_id:
             params["categoryId"] = category_id
@@ -498,7 +498,7 @@ class CartaAIClient:
                 }
             }
         """
-        return await self._request("POST", "/order", json_data=order_data)
+        return await self._request("POST", "/api/v1/order", json_data=order_data)
 
     async def get_order(self, order_id: str) -> Dict[str, Any]:
         """Get order details and status.
@@ -518,7 +518,7 @@ class CartaAIClient:
                 }
             }
         """
-        endpoint = f"/order/get-order/{order_id}"
+        endpoint = f"/api/v1/order/get-order/{order_id}"
         return await self._request("GET", endpoint)
 
     async def get_customer_orders(
@@ -539,7 +539,7 @@ class CartaAIClient:
                 "data": [...]
             }
         """
-        endpoint = f"/order/filled-orders/{self.subdomain}/{self.local_id}"
+        endpoint = f"/api/v1/order/filled-orders/{self.subdomain}/{self.local_id}"
         params = {"phone": phone}
         if status:
             params["status"] = status
@@ -567,7 +567,7 @@ class CartaAIClient:
                 ]
             }
         """
-        endpoint = f"/delivery/zones/{self.subdomain}/{self.local_id}"
+        endpoint = f"/api/v1/delivery/zones/{self.subdomain}/{self.local_id}"
         return await self._request("GET", endpoint)
 
     async def get_available_drivers(self) -> Dict[str, Any]:
@@ -582,7 +582,7 @@ class CartaAIClient:
                 ]
             }
         """
-        endpoint = f"/delivery/drivers/available/{self.subdomain}/{self.local_id}"
+        endpoint = f"/api/v1/delivery/drivers/available/{self.subdomain}/{self.local_id}"
         return await self._request("GET", endpoint)
 
     # ============================================
